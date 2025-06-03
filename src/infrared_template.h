@@ -40,8 +40,8 @@ public:
     
     Point.index_up=motor_up.index;
     Point.index_down=motor_down.index;
-    Point1.spin_up=motor_up.spin;
-    Point1.spin_down=motor_down.spin;
+    Point.spin_up=motor_up.spin;
+    Point.spin_down=motor_down.spin;
     //toggle_spin();
 
 
@@ -117,8 +117,6 @@ public:
      motor_down.speed=POINT._down; 
      motor_up.index=POINT.index_up; 
      motor_down.index=POINT.index_down; 
-     motor_up.set_speed();
-     motor_down.set_speed();
      motor_up.spin=POINT.spin_up;
      motor_down.spin=POINT.spin_down;
      
@@ -134,10 +132,12 @@ public:
     } 
      else if (motor_up.spin==Brush::NOSPIN) {
       motor_down.spin=Brush::NOSPIN;
-      motor_up.set_spin_after_load(Brush::SUPPORT);
-      motor_down.set_spin_after_load(Brush::SUPPORT);
+      motor_up.set_spin_after_load(Brush::NOSPIN );
+      motor_down.set_spin_after_load(Brush::NOSPIN);
      } 
-       
+    
+     motor_up.set_speed();
+     motor_down.set_speed();
 
      pan.startMove(POINT._pan_pos);
      tilt.startMove(POINT._tilt_pos);
@@ -320,6 +320,12 @@ public:
 
         motor_down.stop();
         motor_up.stop();
+        motor_down.index=0;
+        motor_up.index=0;
+
+        motor_up.set_speed(0);
+        motor_down.set_speed(0);
+
         initial_position(); // servo to neutral position
       }
       else // start the program  execute=true
@@ -342,16 +348,27 @@ public:
   {
     feeder.index=0;
     feeder.stop();
+
     execute=false;
     mode='N';
-        
-    motor_down.stop();
-    motor_up.stop();
+    
+    motor_down.index=0;
+    motor_up.index=0;
+
+    motor_up.set_speed(0);
+    motor_down.set_speed(0);
+
     tempo_empty(500);
     
     initial_position(); // servo to neutral position
         
     display.show_char(mode, 0.5);
+
+    motor_down.index=0;
+    motor_up.index=0;
+    motor_up.set_speed(0);
+    motor_down.set_speed(0);
+
   }
 
   void virtual _Tdiez()
@@ -359,6 +376,8 @@ public:
     execute=false;
     mode='N';
     stop_all();
+    
+
     tempo_empty(30);
     initial_position();
     display.show_char(mode, 0.5);
@@ -400,7 +419,7 @@ public:
   void program()
   {
     if (execute==false) return;
-    int time=1000;
+    int time=500;
     
     Point1.name="Point1";
     target_point POINT1=target_load_nvm(Point1);

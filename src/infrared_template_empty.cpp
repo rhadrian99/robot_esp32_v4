@@ -52,6 +52,12 @@ void infrared_template_empty::stop_all()
   feeder.stop();
   motor_up.stop();
   motor_down.stop();
+  motor_down.index=0;
+  motor_up.index=0;
+
+  motor_up.set_speed(0);
+  motor_down.set_speed(0);
+
   tempo_empty(800);
   display.clear();
   //tempo_empty(10);

@@ -25,7 +25,7 @@ class infr_motor: public infrared_template_empty
 
       if (motor_up.spin==Brush::NOSPIN)
       {
-        motor_up.update_speeds(motor_up._SPEEDS,motor_up.speed,"NOSPIN",SUPPORT_STEP);
+        motor_up.update_speeds_nospin(motor_up._SPEEDS,motor_up.speed,"NOSPIN",SUPPORT_STEP);
       }
     
       motor_up.save_data_as();
@@ -59,8 +59,8 @@ class infr_motor: public infrared_template_empty
   void _T3() override
   {
     display.show_char('R',0.5);
-    motor_up.check_data(true);
-    motor_down.check_data(true);
+    motor_up.check_data(false);
+    motor_down.check_data(false);
     display.displayImage(IMAGES[12],1); // ok save
 
   }  

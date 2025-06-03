@@ -195,7 +195,7 @@ void setup()
 
  feeder.init_pins();
 
-  motor_down.check_data(true); 
+  motor_down.check_data(false); 
 
   motor_up.init(MOT_UP,Brush::TOPSPIN,"MOTOR UP") ;
   motor_down.init(MOT_DOWN,Brush::SUPPORT,"MOTOR DOWN");

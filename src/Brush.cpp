@@ -35,6 +35,21 @@ void Brush::update_speeds(uint16_t _VAL[9],int initial_value, String spintype,in
 
 }
 
+void Brush::update_speeds_nospin(uint16_t _VAL[9],int initial_value, String spintype,int _step)
+{
+  _VAL[0]=MOTOR_MIN;
+  
+  if (initial_value<=MOTOR_MIN) initial_value=_VAL[1]; /// preserve old settings
+  _VAL[0]=MOTOR_MIN;
+  _VAL[1]=initial_value;
+  for(int i=2;i<=8;i++)
+  { 
+    _VAL[i]=2*_step+_VAL[i-1];
+  }
+
+}
+
+
 
 void Brush::init(uint8_t _pin,_spinType _spin, String name)    
 {
@@ -186,6 +201,8 @@ void Brush::save_data_as()
   brush_mem.putBytes(dataType.c_str(), &_SPEEDS, _size);  
   
   brush_mem.end();
+
+  reporting();
 }
 
 
@@ -227,12 +244,12 @@ void Brush::load_data_as()
   size_t length=brush_mem.getBytesLength(dataType.c_str());
   char buffer3[length];
   size_t _length = brush_mem.getBytes(dataType.c_str(), buffer3, length);
-  //size_t _length = brush_mem.getBytes(dataType.c_str(), NULL, NULL);
+  
   char buffer[_length]; 
   brush_mem.getBytes(dataType.c_str(), buffer, _length);  
   memcpy(_SPEEDS, buffer, _length);
-  
   brush_mem.end();
+
 
   reporting();
   
@@ -295,7 +312,9 @@ void Brush::increase_speed()
     index=8;
     speed= _SPEEDS[8]; 
   }
-  
+ 
+ 
+
  set_speed();     
  Serial.print(motor_position + F(" speed = "));
  Serial.println(speed, DEC);
@@ -326,7 +345,7 @@ void Brush:: decrease_speed()
       
     }
 
-
+   
    set_speed();
    Serial.print(motor_position + F(" speed = "));
    Serial.println(speed, DEC);
@@ -415,6 +434,7 @@ void Brush::reporting()
   for (uint8_t i=0;i<9;i++)
   {
     DEBUG(_SPEEDS[i],false);
+   
   }
   
   

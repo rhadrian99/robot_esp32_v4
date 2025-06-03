@@ -27,7 +27,7 @@ public:
 Preferences brush_mem;
 
 uint16_t _SPEEDS[9];
-uint16_t _TEPMP_SPEEDS[9];
+
 uint16_t speed_step;
 uint16_t slow_speed_step;
 uint16_t motor_min;
@@ -58,6 +58,7 @@ Brush();
 void set_spin_after_load(uint8_t _spin);
 void check_data(bool force);
 void update_speeds(uint16_t _VAL[9],int initial_value, String spintype,int _step);
+void update_speeds_nospin(uint16_t _VAL[9],int initial_value, String spintype,int _step);
 void save_data_as();
 void load_data_as();
 
