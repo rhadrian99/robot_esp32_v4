@@ -42,14 +42,21 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
      _stepper->setDelayToDisable(3000); // was 300 before
 
     //_stepper->setSpeedInUs(10);  // the parameter is us/step !!!
-    _stepper->setAcceleration(10000); //tmc2208 v1
-    _stepper->setSpeedInHz(400);  //tmc2208 v1
+    //_stepper->setAcceleration(10000); //tmc2208 v1
+    //_stepper->setSpeedInHz(400);  //tmc2208 v1
+
+    _stepper->setAcceleration(5000); //tmc2208 v1
+    _stepper->setSpeedInHz(200);  //tmc2208 v1
     
   }
    timeout_const=200;
    directie=-1; //1  for normal
    load_direction();
+   
+   
    directie=1; //1  for normal
+   directie=0; //0  for  robot irinel
+   
    if (directie ==-1 ) {_stepper->setDirectionPin(_dirPin,false);}
    else {_stepper->setDirectionPin(_dirPin,true);}
    
@@ -152,8 +159,8 @@ steps/sec
   // stop
   // timeout based on FEEDER index value
   
-  _speed=50*8; //tmc2208 v1 ms1 jumper on
-  //_speed=50; //a4938
+  //_speed=50*8; //tmc2208 v1 ms1 jumper on
+  _speed=50; //a4938
 
   if (prog==true)
   { 
