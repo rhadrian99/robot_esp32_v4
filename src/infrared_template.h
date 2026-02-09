@@ -419,7 +419,8 @@ public:
   void program()
   {
     if (execute==false) return;
-    int time=500;
+    //int time=500; 
+    int time=1000; // varianta irinel
     
     Point1.name="Point1";
     target_point POINT1=target_load_nvm(Point1);

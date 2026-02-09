@@ -12,9 +12,6 @@ using namespace std;
 #define TIMEOUT_PROGRAM 200 // millisec
 #define STEPPER_SPEED_PROGRAM 100 // millisec
 
-#define ROBOT_IRINEL 0
-#define ROBOT_ADRIAN 0
-#define ROBOT_NEW 1
 
 
 bool timeractive=true;
@@ -200,6 +197,10 @@ void setup()
   motor_up.init(MOT_UP,Brush::TOPSPIN,"MOTOR UP") ;
   motor_down.init(MOT_DOWN,Brush::SUPPORT,"MOTOR DOWN");
   
+ #define ROBOT_IRINEL 1
+ #define ROBOT_ADRIAN 0
+ #define ROBOT_NEW 0
+
 
   if (ROBOT_IRINEL) { pan.init(PAN, F("PAN"),5,55);}
   if (ROBOT_ADRIAN) { pan.init(PAN, F("PAN"),5,55);}
