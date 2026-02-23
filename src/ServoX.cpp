@@ -76,7 +76,7 @@ void ServoX::init(int _pin, String _name,int _min, int _max)
  //pinMode(PIN, OUTPUT);
  //this->_servo.attach(_pin);
  this->_servo.attach(_pin, 544, 2550);
- delayMs=15;
+ delayMs=6;
  // initial angle = 0 
  _servo.write(0);
  moving=0;

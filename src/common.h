@@ -116,7 +116,6 @@
 #define play 3091662599
 
 
-
 #endif
 
 
@@ -140,6 +139,7 @@
 //servo motors
 #define PAN 18  // servo 1 //26 esp32
 #define TILT 19 // servo 2 //12 esp32
+#define  SCRAMBLE 13 // servo 3 // 13 esp2
 
 //stepper
 #define STEP_PIN 4  //19 //esp32

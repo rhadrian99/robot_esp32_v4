@@ -15,7 +15,6 @@
 
 extern Brush motor_up;
 extern Brush motor_down;
-extern StepperX feeder;
 
 
 

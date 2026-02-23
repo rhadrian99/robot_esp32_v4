@@ -127,6 +127,8 @@ void _T5() override
   
   void virtual _TC()
   {
+    
+    
     //pan.startMove(0);
     //tilt.startMove(0);
     //tilt.move(0,true,true);
@@ -144,10 +146,15 @@ void _T5() override
     //tilt.startMove(23);
     //return;
 
-    if (pan.read_pos()<pan.max_value )  pan.startMove(pan.max_value ); else pan.startMove(pan.min_value );
+    //if (pan.read_pos()<pan.max_value )  pan.startMove(pan.max_value ); else pan.startMove(pan.min_value );
     
-    if (tilt.read_pos()<tilt.max_value )  tilt.startMove(tilt.max_value) ; else tilt.startMove(tilt.min_value );
-
+    //if (tilt.read_pos()<tilt.max_value )  tilt.startMove(tilt.max_value) ; else tilt.startMove(tilt.min_value );
+    
+    scramble.startMove(0);
+    scramble.startMove(180);
+    scramble.startMove(0);
+    scramble.startMove(180);
+    scramble.startMove(0);
 
     //pan.move(60,true,true);
     //tilt.move(60,true,true);

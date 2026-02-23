@@ -22,7 +22,7 @@ struct target_point{
   //uint8_t spin;
   
   
-} target1, target2,target3,Point1,Point2,Point3 ;
+} target1, target2,target3,Point1,Point2,Point3,Point4,Point5,Point6;
 
 
 void target_save_nvm(target_point P)

@@ -21,6 +21,7 @@ extern char mode;
 extern LEDdisplay display;
 extern ServoX pan;
 extern ServoX tilt;
+extern ServoX scramble;
 extern Brush motor_up;
 extern Brush motor_down;
 extern StepperX feeder;

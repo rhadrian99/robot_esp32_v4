@@ -11,7 +11,7 @@ using namespace std;
 #define BRUSH_SPEED_STEP 30 // millisec
 #define TIMEOUT_PROGRAM 200 // millisec
 #define STEPPER_SPEED_PROGRAM 100 // millisec
-
+int enable_scramble=0;
 
 
 bool timeractive=true;
@@ -26,7 +26,7 @@ Ticker IRTimer;
 Ticker StatusTimer;
 Ticker BeepTimer;
 Ticker memory_timer;
-
+Ticker scramble_timer;
  
 
 extern void update_motors();
@@ -46,6 +46,8 @@ IRrecv irrecv(RECV_PIN);
 
 ServoX pan;
 ServoX tilt;
+ServoX scramble;
+
 
 Brush motor_up;
 Brush motor_down;
@@ -164,7 +166,14 @@ void IRTask(void* parameter) {
 }
 
 
-
+void run_scramble() {
+  
+  if (enable_scramble)
+  {
+    scramble.startMove(0);
+    scramble.startMove(180);
+  }
+}
 
 
 void setup()
@@ -185,6 +194,9 @@ void setup()
  Point1.name="Point1";
  Point2.name="Point2";
  Point3.name="Point3";
+ Point5.name="Point5";
+ Point6.name="Point6";
+ 
 
  //Point1=target_load_nvm(Point1);
  //Point2=target_load_nvm(Point2);
@@ -197,23 +209,28 @@ void setup()
   motor_up.init(MOT_UP,Brush::TOPSPIN,"MOTOR UP") ;
   motor_down.init(MOT_DOWN,Brush::SUPPORT,"MOTOR DOWN");
   
- #define ROBOT_IRINEL 1
- #define ROBOT_ADRIAN 0
+ #define ROBOT_IRINEL 0
+ #define ROBOT_ADRIAN 1
  #define ROBOT_NEW 0
 
 
   if (ROBOT_IRINEL) { pan.init(PAN, F("PAN"),5,55);}
-  if (ROBOT_ADRIAN) { pan.init(PAN, F("PAN"),5,55);}
+  if (ROBOT_ADRIAN) { pan.init(PAN, F("PAN"),10,48);}
   if (ROBOT_NEW) { pan.init(PAN, F("PAN"),0,40);}
+   scramble.init(SCRAMBLE, F("SCRAMBLE"),0,180);
   pan.load_pos();
   
   //delay(200);
   if (ROBOT_IRINEL) { tilt.init(TILT,F("TILT"),15,60);} // 
-  if (ROBOT_ADRIAN) { tilt.init(TILT,F("TILT"),5,60);} // 
+  if (ROBOT_ADRIAN) { tilt.init(TILT,F("TILT"),10,55);} // 
   if (ROBOT_NEW) { tilt.init(TILT,F("TILT"),0,40);} // new join mechanism
   tilt.load_pos();
 
-  
+  //scramble.startMove(0); 
+   //scramble.startMove(180); 
+   //scramble.startMove(0); 
+
+  scramble_timer.attach_ms(3000, run_scramble); // run scramble every 5 min 
   BrushTimer.attach_ms(50, update_motors);  
   //IRTimer.attach_ms(50, receive_ir);  
   BeepTimer.attach_ms(1000*60*8, Beep_off);  // silent the beef from motors at every 8 min
@@ -242,6 +259,7 @@ void loop()
   if (execute==false && mode=='N') // outside programming area
   {
     //Serial.println("Normal mode");
+    
     feeder.move_stepper(100,true); /// true is for delayed movement
     
   }

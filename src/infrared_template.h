@@ -1,7 +1,8 @@
 #ifndef infrared_template_h
 #define infrared_template_h
 
-#include "infrared_template_empty.h"
+#include "infrared_template_empty.h" // interface
+#include <Ticker.h>
 #define SERVO_STEP 6 //  degrees to move steper
 
 
@@ -9,12 +10,58 @@
 
 class infrared_template: public infrared_template_empty
 {
+private:
+  // Sistem universal de confirmare pentru punctele 1-6
+  int current_point_waiting = 0; // 0=none, 1-6 = care punct asteapta confirmare
+  target_point pending_point;
+  Ticker confirmation_ticker;
+  Ticker blink_ticker;
+  bool blink_state = false;
+  
+  void _confirm_timeout() {
+    if (current_point_waiting > 0) {
+      confirmation_ticker.detach();
+      blink_ticker.detach();
+      current_point_waiting = 0;
+      blink_state = false;
+      show_display_status();
+    }
+  }
+
+  // function-local static to avoid in-class inline static incompatibility
+  static infrared_template*& _instance_ptr_ref() {
+    static infrared_template* ptr = nullptr;
+    return ptr;
+  }
+
+  static void _static_confirm_timeout() {
+    infrared_template* inst = _instance_ptr_ref();
+    if (inst) inst->_confirm_timeout();
+  }
+
+  void _blink_toggle() {
+    if (current_point_waiting <= 0) return;
+    blink_state = !blink_state;
+    char c = '1' + (current_point_waiting - 1);
+    if (blink_state) {
+      display.show_char(c, 0.5);
+    } else {
+      show_display_status();
+    }
+  }
+
+  static void _static_blink_toggle() {
+    infrared_template* inst = _instance_ptr_ref();
+    if (inst) inst->_blink_toggle();
+  }
+
 public:
   infrared_template()
   {
+    _instance_ptr_ref() = this;
   }
 
-    
+
 
   void virtual _TMute()
   {
@@ -26,35 +73,32 @@ public:
   void virtual _T1()
   {
     if (execute) return;
-    //initial_position();
-                
 
     target_point Point;
-
     Point._pan_pos=pan.read_pos();
     Point._tilt_pos=tilt.read_pos();
     Point._up=motor_up.speed;
     Point._down=motor_down.speed;
     Point.stepper_speed=feeder.speed;
     Point.stepper_index=feeder.index;
-    
     Point.index_up=motor_up.index;
     Point.index_down=motor_down.index;
     Point.spin_up=motor_up.spin;
     Point.spin_down=motor_down.spin;
-    //toggle_spin();
-
 
     Serial.print("MOTOR UP SPEED:"); Serial.println(Point._up,DEC);
     Serial.print("MOTOR DOWN SPEED:"); Serial.println(Point._down,DEC);
     
     Point.name="Point1";
-    memcpy(&Point1,&Point,sizeof(Point));
-    target_save_nvm(Point1);
+    memcpy(&pending_point, &Point, sizeof(Point));
     
-    display.displayImage(IMAGES[12],1); // ok save
-    show_display_status();
-
+    current_point_waiting = 1;
+    confirmation_ticker.once_ms(3000, _static_confirm_timeout);
+    blink_state = false;
+    blink_ticker.attach_ms(500, _static_blink_toggle);
+    
+    display.show_char_no_delay('1');
+    
   }
 
   void virtual _T2()
@@ -67,7 +111,6 @@ public:
     Point._down=motor_down.speed;
     Point.stepper_speed=feeder.speed;
     Point.stepper_index=feeder.index;
-    
     Point.index_up=motor_up.index;
     Point.index_down=motor_down.index;
 
@@ -75,11 +118,15 @@ public:
     Serial.print("MOTOR DOWN SPEED:"); Serial.println(Point._down,DEC);
     
     Point.name="Point2";
-    memcpy(&Point2,&Point,sizeof(Point));
-    target_save_nvm(Point2);
-
-    display.displayImage(IMAGES[12],1); // ok save
-    show_display_status();
+    memcpy(&pending_point, &Point, sizeof(Point));
+    
+    current_point_waiting = 2;
+    confirmation_ticker.once_ms(3000, _static_confirm_timeout);
+    blink_state = false;
+    blink_ticker.attach_ms(500, _static_blink_toggle);
+    
+    //display.displayImage(IMAGES[12], 1);
+    display.show_char_no_delay('2');
   }
 
   void virtual _T3()
@@ -92,7 +139,6 @@ public:
     Point._down=motor_down.speed;
     Point.stepper_speed=feeder.speed;
     Point.stepper_index=feeder.index;
-    
     Point.index_up=motor_up.index;
     Point.index_down=motor_down.index;
 
@@ -100,11 +146,160 @@ public:
     Serial.print("MOTOR DOWN SPEED:"); Serial.println(Point._down,DEC);
     
     Point.name="Point3";
-    memcpy(&Point3,&Point,sizeof(Point));
-    target_save_nvm(Point3);
+    memcpy(&pending_point, &Point, sizeof(Point));
     
-    display.displayImage(IMAGES[12],1); // ok save
-    show_display_status();
+    current_point_waiting = 3;
+    confirmation_ticker.once_ms(3000, _static_confirm_timeout);
+    blink_state = false;
+    blink_ticker.attach_ms(500, _static_blink_toggle);
+    
+    display.show_char_no_delay('3');
+  }
+  
+
+  void virtual _T4()
+  {
+     if (execute) return;
+     
+     target_point Point;
+     Point._pan_pos=pan.read_pos();
+     Point._tilt_pos=tilt.read_pos();
+     Point._up=motor_up.speed;
+     Point._down=motor_down.speed;
+     Point.stepper_speed=feeder.speed;
+     Point.stepper_index=feeder.index;
+     Point.index_up=motor_up.index;
+     Point.index_down=motor_down.index;
+     Point.spin_up=motor_up.spin;
+     Point.spin_down=motor_down.spin;
+
+     Point.name="Point4";
+     memcpy(&pending_point, &Point, sizeof(Point));
+     
+    current_point_waiting = 4;
+    confirmation_ticker.once_ms(3000, _static_confirm_timeout);
+    blink_state = false;
+    blink_ticker.attach_ms(500, _static_blink_toggle);
+     
+    display.show_char_no_delay('4');
+  }
+
+  void virtual _T5()
+  {
+     if (execute) return;
+     
+     target_point Point;
+     Point._pan_pos=pan.read_pos();
+     Point._tilt_pos=tilt.read_pos();
+     Point._up=motor_up.speed;
+     Point._down=motor_down.speed;
+     Point.stepper_speed=feeder.speed;
+     Point.stepper_index=feeder.index;
+     Point.index_up=motor_up.index;
+     Point.index_down=motor_down.index;
+     Point.spin_up=motor_up.spin;
+     Point.spin_down=motor_down.spin;
+
+     Point.name="Point5";
+     memcpy(&pending_point, &Point, sizeof(Point));
+     
+    current_point_waiting = 5;
+    confirmation_ticker.once_ms(3000, _static_confirm_timeout);
+    blink_state = false;
+    blink_ticker.attach_ms(500, _static_blink_toggle);
+     
+     display.show_char_no_delay('5');
+  }
+
+  void virtual _T6()
+  {
+     if (execute) return;
+     
+     target_point Point;
+     Point._pan_pos=pan.read_pos();
+     Point._tilt_pos=tilt.read_pos();
+     Point._up=motor_up.speed;
+     Point._down=motor_down.speed;
+     Point.stepper_speed=feeder.speed;
+     Point.stepper_index=feeder.index;
+     Point.index_up=motor_up.index;
+     Point.index_down=motor_down.index;
+     Point.spin_up=motor_up.spin;
+     Point.spin_down=motor_down.spin;
+
+     Point.name="Point6";
+     memcpy(&pending_point, &Point, sizeof(Point));
+     
+    current_point_waiting = 6;
+    confirmation_ticker.once_ms(3000, _static_confirm_timeout);
+    blink_state = false;
+    blink_ticker.attach_ms(500, _static_blink_toggle);
+     
+     display.show_char_no_delay('6');
+  }
+
+  // Tasta 7 - Salvează punctul în așteptare
+  void virtual _T7()
+  {
+      if (execute) return;
+      
+      if (current_point_waiting > 0 && current_point_waiting <= 6) {
+          confirmation_ticker.detach();
+          blink_ticker.detach();
+          blink_state = false;
+          
+          pending_point.name = "Point" + String(current_point_waiting);
+          
+          switch(current_point_waiting) {
+              case 1:
+                  memcpy(&Point1, &pending_point, sizeof(target_point));
+                  target_save_nvm(Point1);
+                  break;
+              case 2:
+                  memcpy(&Point2, &pending_point, sizeof(target_point));
+                  target_save_nvm(Point2);
+                  break;
+              case 3:
+                  memcpy(&Point3, &pending_point, sizeof(target_point));
+                  target_save_nvm(Point3);
+                  break;
+              case 4:
+                  memcpy(&Point4, &pending_point, sizeof(target_point));
+                  target_save_nvm(Point4);
+                  break;
+              case 5:
+                  memcpy(&Point5, &pending_point, sizeof(target_point));
+                  target_save_nvm(Point5);
+                  break;
+              case 6:
+                  memcpy(&Point6, &pending_point, sizeof(target_point));
+                  target_save_nvm(Point6);
+                  break;
+          }
+          
+          current_point_waiting = 0;
+          display.displayImage(IMAGES[12], .5); // ok save
+          show_display_status();
+      }
+  }
+
+  // Tasta 8 - Încarcă punctul în aștuptare
+  void virtual _T8()
+  {
+      if (execute) return;
+      
+      if (current_point_waiting > 0 && current_point_waiting <= 6) {
+          confirmation_ticker.detach();
+          blink_ticker.detach();
+          blink_state = false;
+          
+          String point_name = "Point" + String(current_point_waiting);
+          load_target_point(point_name);
+          
+          current_point_waiting = 0;
+          show_display_status();
+          display.displayImage(IMAGES[25],.5); // ok save
+      }
   }
 
   void load_target_point(String position)
@@ -150,27 +345,35 @@ public:
     
   }
 
-
-  void virtual _T4()
-  {
-     if (execute) return;
-     load_target_point("Point1");
-     
+  void load_point_from_nvm(int point_num) {
+    target_point* pPoint = nullptr;
+    switch(point_num) {
+      case 1: pPoint = &Point1; break;
+      case 2: pPoint = &Point2; break;
+      case 3: pPoint = &Point3; break;
+      case 4: pPoint = &Point4; break;
+      case 5: pPoint = &Point5; break;
+      case 6: pPoint = &Point6; break;
+    }
+    
+    if (pPoint) {
+      pPoint->name = "Point" + String(point_num);
+      target_point temp = target_load_nvm(*pPoint);
+      memcpy(pPoint, &temp, sizeof(target_point));
+    }
   }
 
-  void virtual _T5()
-  {
-     if (execute) return;
-     load_target_point("Point2");
+  target_point* get_point_by_number(int point_num) {
+    switch(point_num) {
+      case 1: return &Point1;
+      case 2: return &Point2;
+      case 3: return &Point3;
+      case 4: return &Point4;
+      case 5: return &Point5;
+      case 6: return &Point6;
+    }
+    return nullptr;
   }
-
-  void virtual _T6()
-  {
-     if (execute) return;
-     load_target_point("Point3");
-  }
-
-  
 
   void virtual _TOK()
   {
@@ -187,9 +390,22 @@ public:
       display.show_char(mode,0.5); 
       show_display_status();
   }
+  
+  //decrease feeder speed
   void virtual _TTools()
   {         
       if (execute) return;
+      feeder.decrease_speed();
+      show_display_status();
+      
+  }
+      
+  void virtual _TGuide()
+  {
+      
+      if (execute) return;
+
+       if (execute) return;
       
       if ((motor_up.index>0)  || (motor_down.index>0)) // allow feeder to feed balls only if one motor is active
       {
@@ -202,13 +418,7 @@ public:
         show_display_status();
       }
       
-  }
-      
-  void virtual _TGuide()
-  {
-      if (execute) return;
-      feeder.decrease_speed();
-      show_display_status();
+     
 
   }
 
@@ -281,26 +491,19 @@ public:
   void _T9() override
     {
       if (execute==true)  {return;}
-      points++;
-      if (points>4) {points=2;}
       
-      if (points==2) 
-      {
-        display.show_char('2',0.5);
+      // Ciclu: 2 -> 3 -> 4 -> 6 -> 2
+      switch(points) {
+        case 2: points = 3; break;
+        case 3: points = 4; break;
+        case 4: points = 6; break;
+        case 6: points = 2; break;
+        default: points = 2; break;  // inițial
       }
-      if (points==3) 
-      {
-        display.show_char('3',0.5);
-      }
-      if (points==4) 
-      {
-        display.show_char('4',0.5);
-      }
+      
+      display.show_char('0' + points, 0.5);
 
-      ///if (points==5) 
-      //{
-      //  display.show_char('5',0.5);
-      //}
+      
 
 
     }
@@ -336,7 +539,6 @@ public:
           initial_position(); // move servos to neutral position
           tempo_empty(800);
           mode='N';
-          
 
       }
 
@@ -420,47 +622,55 @@ public:
   {
     if (execute==false) return;
     //int time=500; 
-    int time=1000; // varianta irinel
+    //int time=1000; // varianta irinel
+    int time=700; // varianta pisoi
     
-    Point1.name="Point1";
-    target_point POINT1=target_load_nvm(Point1);
-    memcpy(&Point1, &POINT1, sizeof(target_point));
-        
-    Point2.name="Point2";
-    target_point POINT2=target_load_nvm(Point2);
-    memcpy(&Point2, &POINT2, sizeof(target_point));
-    
-    Point3.name="Point3";
-    target_point POINT3=target_load_nvm(Point3);
-    memcpy(&Point3, &POINT3, sizeof(target_point));
+    for (int i = 1; i <= 6; i++) {
+      load_point_from_nvm(i);
+    }
     
 
     if (mode=='N')
     {
         Serial.print("PROGRAM N: " );Serial.print(points,DEC);Serial.println("points");
-        if (points==2)
-        {
-          pos(Point1,time);
-          pos(Point3,time);
-        }
         
-
-        if (points==3)
-        {
-          pos(Point1,time);
-          pos(Point2,time);
-          pos(Point3,time);
-          pos(Point2,time);  
-        }
-
-        if (points==4)
-        {
-          pos(Point1,600);
-          pos(Point1,time);
-          
-          pos(Point3,600);
-          pos(Point3,time);
-          
+        switch(points) {
+            case 2:
+                pos(*get_point_by_number(1), time);
+                pos(*get_point_by_number(3), time);
+                break;
+            
+            case 3:
+                pos(*get_point_by_number(1), time);
+                pos(*get_point_by_number(2), time);
+                pos(*get_point_by_number(3), time);
+                pos(*get_point_by_number(2), time);
+                break;
+            
+            case 4:
+                pos(*get_point_by_number(1), 600);
+                pos(*get_point_by_number(1), time);
+                pos(*get_point_by_number(3), 600);
+                pos(*get_point_by_number(3), time);
+                break;
+            
+            case 6:
+                // Executa random sequence cu 4 pozitii aleatorii din Point1-Point6
+                // fara a repeta pozitia anterioara consecutiv
+                {
+                    int lastPoint = 0;
+                    for (int i = 0; i < 4; i++) {
+                        int randPoint;
+                        do {
+                            randPoint = random(1, 7);
+                        } while (randPoint == lastPoint);
+                        
+                        target_point* p = get_point_by_number(randPoint);
+                        if (p) pos(*p, time);
+                        lastPoint = randPoint;
+                    }
+                }
+                break;
         }
     }
 
