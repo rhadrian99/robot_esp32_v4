@@ -208,7 +208,7 @@ steps/sec
   // timeout based on FEEDER index value
   
   _speed=50*REDUCTION_STEPPER_SPEED*8; //tmc2208 v1 ms1 jumper on
-  _speed=200*8; //tmc2208 v1 ms1 jumper on
+  //_speed=200*8; //tmc2208 v1 ms1 jumper on
   //_speed=50; //a4938
 
   if (prog==true)

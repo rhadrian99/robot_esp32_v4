@@ -142,7 +142,20 @@ if (irrecv.decode())
    
     if (receive_value>0)
     {
-      DEBUG(F("IR value: "),receive_value,true); Serial.println();
+      DEBUG(F("IR value: "),receive_value,true); 
+      Serial.print("IR Hex: 0x");
+      Serial.println(receive_value, HEX);
+      
+      // Debug: check if it's a left/right arrow
+      if (receive_value == TLEFT || receive_value == hTLEFT) {
+        Serial.println(">>> TLEFT matched!");
+      } else if (receive_value == TRIGHT || receive_value == hTRIGHT) {
+        Serial.println(">>> TRIGHT matched!");
+      } else {
+        Serial.print("IR code NOT matched with any function. Mode: ");
+        Serial.println(mode);
+      }
+      
       infrared_menu(receive_value, mode);
       //tempo_empty(100);
       status();

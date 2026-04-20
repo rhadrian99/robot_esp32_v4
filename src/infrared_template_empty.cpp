@@ -164,7 +164,11 @@ void infrared_template_empty::menu(uint32_t _var)
     case hD:       _TD();  break;  // reset
   
     default:
-      
+      Serial.print("UNKNOWN IR CODE: ");
+      Serial.print(_var);
+      Serial.print(" (0x");
+      Serial.print(_var, HEX);
+      Serial.println(")");
       break;
     }
     
