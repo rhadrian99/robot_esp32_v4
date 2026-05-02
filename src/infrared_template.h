@@ -187,10 +187,18 @@ public:
       display.show_char(mode,0.5); 
       show_display_status();
   }
-  void virtual _TTools()
+  
+  void virtual _TTools() // decrese feeder speed
   {         
       if (execute) return;
+      feeder.decrease_speed();
+      show_display_status();
       
+  }
+      
+  void virtual _TGuide() // info button // increase feeder speed
+  {
+     if (execute) return;
       if ((motor_up.index>0)  || (motor_down.index>0)) // allow feeder to feed balls only if one motor is active
       {
         feeder.increase_speed();
@@ -201,14 +209,6 @@ public:
         feeder.stop();
         show_display_status();
       }
-      
-  }
-      
-  void virtual _TGuide()
-  {
-      if (execute) return;
-      feeder.decrease_speed();
-      show_display_status();
 
   }
 
@@ -226,6 +226,8 @@ public:
     if (execute) return;
     motor_up.decrease_speed();
     if (motor_up.spin==Brush::NOSPIN) {motor_down.decrease_speed();}
+    
+    if (motor_down.index==0 && motor_up.index==0) {feeder.stop(); feeder.index=0; }
     show_display_status();
 
   }
@@ -243,8 +245,8 @@ public:
     if (execute) return;
     motor_down.decrease_speed();
     if (motor_down.spin==Brush::NOSPIN) {motor_up.decrease_speed();}
+    if (motor_down.index==0 && motor_up.index==0) {feeder.stop(); feeder.index=0; }
     show_display_status();
-
   }
 
   void virtual _T0()

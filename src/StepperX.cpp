@@ -8,9 +8,6 @@ extern void DEBUG(String label, int64_t value, bool newline);
 extern void DEBUG(int64_t value, bool newline);
 extern void DEBUG(String label, bool newline);
 
-#define STEPS 50;
-#define STEPS_REDUCTOR 200;
-#define SPEED 100;
 
 // 200 steps per rotation  1.8 degrees per step
 // 50 steps/s => complete rotation in 4 s => 1 ball/ 1sec // 4 wings 
@@ -29,41 +26,32 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
    _dirPin  = dirPin;
    _stopPin = stopPin;   
 
+   // Enable pin managed manually via start()/stop() — NOT via FAS setAutoEnable,
+   // because setAutoEnable + manual digitalWrite on the same pin causes conflicts.
+   pinMode(_stopPin, OUTPUT);
+   digitalWrite(_stopPin, HIGH); // start disabled (active LOW driver)
+
    engine.init();
   _stepper = engine.stepperConnectToPin(_stepPin);
   if (_stepper) {
     _stepper->setDirectionPin(_dirPin,true);
-    _stepper->setEnablePin(_stopPin);
-   
-    _stepper->setAutoEnable(true);
-   
-    // If auto enable/disable need delays, just add (one or both):
-     _stepper->setDelayToEnable(5);
-     _stepper->setDelayToDisable(3000); // was 300 before
 
-    //_stepper->setSpeedInUs(10);  // the parameter is us/step !!!
-    //_stepper->setAcceleration(10000); //tmc2208 v1
-    //_stepper->setSpeedInHz(400);  //tmc2208 v1
-
-    _stepper->setAcceleration(5000); //tmc2208 v1
-    _stepper->setSpeedInHz(200);  //tmc2208 v1
+    _stepper->setAcceleration(10000);
+    _stepper->setSpeedInHz(1000);
     
   }
    timeout_const=200;
    directie=-1; //1  for normal
-   load_direction();
+   //load_direction();
+      
    
+  // if (directie ==-1 ) {_stepper->setDirectionPin(_dirPin,false);}
+   //else {_stepper->setDirectionPin(_dirPin,true);}
    
-   directie=1; //1  for normal
-   directie=0; //0  for  robot irinel
-   
-   if (directie ==-1 ) {_stepper->setDirectionPin(_dirPin,false);}
-   else {_stepper->setDirectionPin(_dirPin,true);}
-   
-   _stepper->setDirectionPin(_dirPin,false);
+   //_stepper->setDirectionPin(_dirPin,false);
 
-   //directie=-1;
-   save_direction();
+   
+   //save_direction();
   
   //_stepper.setAccelerationInStepsPerSecondPerSecond(500);
 
@@ -94,8 +82,9 @@ void StepperX::start(){
     if (digitalRead(_stopPin)==HIGH)
     {
       digitalWrite(_stopPin, LOW); // start the feeder
-      this->enable=true;
+      
     }
+    this->enable=true;
 }
 
 void StepperX::stop(){
@@ -103,9 +92,11 @@ void StepperX::stop(){
   if (digitalRead(_stopPin)==LOW)
   {
     digitalWrite(_stopPin, HIGH); // stop the feeder
-    this->enable=false;
-  }
-  
+      }
+  this->enable=false;
+  this->index=0;
+  this->speed=0;
+
 }
 
 
@@ -159,8 +150,7 @@ steps/sec
   // stop
   // timeout based on FEEDER index value
   
-  //_speed=50*8; //tmc2208 v1 ms1 jumper on
-  _speed=50; //a4938
+    _speed=50*2.75*8; //tmc2208 v1 ms1 jumper offa4938
 
   if (prog==true)
   { 
@@ -188,11 +178,7 @@ steps/sec
       uint16_t timeout = FEEDER[index] *timeout_const;  // 160 ---> 280 msec
       tempo_empty(timeout);
    }
-   
-   //Serial.print("FEEDER pos: ");Serial.print(_stepper->getCurrentPosition(),DEC);
-   //Serial.print(" SPEED: ");   Serial.print(millis() - ref,DEC); Serial.println(" milisec/ball");
-   //speed =millis() - ref;
-   
+      
    
   }
 

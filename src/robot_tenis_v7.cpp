@@ -8,24 +8,16 @@ using namespace std;
 #define VERSION 6         // added in april 2025
 #define MINOR_VERSION 1 //
 
-#define BRUSH_SPEED_STEP 30 // millisec
-#define TIMEOUT_PROGRAM 200 // millisec
-#define STEPPER_SPEED_PROGRAM 100 // millisec
-
-
-
-bool timeractive=true;
-int var = 0;
 
 char mode ='N'; // initial normal program
 //char modes[] = {'N','P','S'};
 
 #include <infrared.h>
 Ticker BrushTimer;
-Ticker IRTimer;
-Ticker StatusTimer;
+//Ticker IRTimer;
+//Ticker StatusTimer;
 Ticker BeepTimer;
-Ticker memory_timer;
+//Ticker memory_timer;
 
  
 
@@ -131,28 +123,31 @@ void printMemoryStats() {
 }
 
 
+static uint32_t last_ir_value = 0;
+static unsigned long last_ir_time = 0;
+const unsigned long IR_DEBOUNCE_MS = 800; // min ms between same command executions
+
 void receive_ir()
 {
-  
-if (irrecv.decode())
+  if (irrecv.decode())
   {
-    uint32_t receive_value = irrecv.decodedIRData.decodedRawData ;
-   
-    if (receive_value>0)
+    uint32_t receive_value = irrecv.decodedIRData.decodedRawData;
+    irrecv.resume(); // always resume first
+
+    if (receive_value > 0)
     {
-      DEBUG(F("IR value: "),receive_value,true); Serial.println();
-      infrared_menu(receive_value, mode);
-      //tempo_empty(100);
-      status();
-      
+      unsigned long now = millis();
+      bool same_code = (receive_value == last_ir_value);
+      bool too_fast  = (now - last_ir_time) < IR_DEBOUNCE_MS;
+
+      if (!(same_code && too_fast)) // block only if same code AND within debounce window
+      {
+        last_ir_value = receive_value;
+        last_ir_time  = now;
+        DEBUG(F("IR value: "), receive_value, true); Serial.println();
+        infrared_menu(receive_value, mode);
+      }
     }
-    // Receive the next value
-    irrecv.resume();
-    
-  }
-  else
-  {
-      //bluetooh_receive(); 
   }
 }
 
@@ -169,15 +164,14 @@ void IRTask(void* parameter) {
 
 void setup()
 {
-   
+
+ Serial.begin(115200);
+ Serial.flush();
 
  irrecv.enableIRIn();
  
- xTaskCreatePinnedToCore(IRTask, "IR Task", 2048, NULL, 1, NULL, 1); // Run IR task on Core 0
-
- Serial.begin(9600);
- Serial.flush();
-
+ xTaskCreatePinnedToCore(IRTask, "IR Task", 4096, NULL, 2, NULL, 1); // Core 1 — isolated from loop()/stepper
+ 
  target1.name="target1";
  target2.name="target2";
  target3.name="target3";
@@ -190,7 +184,7 @@ void setup()
  //Point2=target_load_nvm(Point2);
  //Point3=target_load_nvm(Point3);
 
- feeder.init_pins();
+ // feeder.init_pins(); // DO NOT CALL: pinMode() on step pin breaks FAS RMT/MCPWM GPIO routing
 
   motor_down.check_data(false); 
 
@@ -241,18 +235,10 @@ void loop()
 
   if (execute==false && mode=='N') // outside programming area
   {
-    //Serial.println("Normal mode");
+    
     feeder.move_stepper(100,true); /// true is for delayed movement
     
   }
-  
-  if (feeder.enable==false && execute==false)
-  {
-    //feeder.stop();    
-  }
-  
-  
-  
   
 
 } //////////////////////////////////////////////////// end loop

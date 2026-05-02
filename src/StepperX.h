@@ -7,7 +7,6 @@
 #include <Arduino.h>
 #include <string.h>
 #include <FastAccelStepper.h>
-//#include <ESP_FlexyStepper.h>
 #include <Preferences.h>
 
 
