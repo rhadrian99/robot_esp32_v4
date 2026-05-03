@@ -47,7 +47,7 @@ void virtual menu(uint32_t _var);
 
   ///////////////////////////////////////////////////////
   void virtual _TTools();
-  void virtual _TGuide();
+  void virtual _TInfo();
 
   void virtual _TMute();
   void virtual _T1();

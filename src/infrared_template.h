@@ -451,7 +451,7 @@ public:
     show_display_status();
   }
 
-  void virtual _TGuide()
+  void virtual _TInfo()
   {
 
     if (execute)
@@ -460,13 +460,13 @@ public:
     if ((motor_up.index > 0) || (motor_down.index > 0)) // allow feeder to feed balls only if one motor is active
     {
       feeder.increase_speed();
-      show_display_status();
     }
     else
     {
+      feeder.index = 0;
       feeder.stop();
-      show_display_status();
     }
+    show_display_status();
   }
 
   void virtual _VUP() // main motor up
@@ -493,6 +493,7 @@ public:
   {
     if (execute)
       return;
+
     if (motor_up.spin == Brush::TOPSPIN)
     {
       motor_up.decrease_speed(); // topspin: motor_up = main
@@ -505,6 +506,12 @@ public:
     { // nospin: both same
       motor_up.decrease_speed();
       motor_down.decrease_speed();
+    }
+
+    if (motor_up.index == 0 && motor_down.index == 0)
+    {
+      feeder.index = 0;
+      feeder.stop();
     }
     show_display_status();
   }
@@ -521,6 +528,7 @@ public:
       motor_up.increase_speed(); // backspin: motor_up = support
     }
     // nospin: P buttons inactive (both motors controlled via V)
+
     show_display_status();
   }
 
@@ -537,6 +545,11 @@ public:
       motor_up.decrease_speed(); // backspin: motor_up = support
     }
     // nospin: P buttons inactive
+    if (motor_up.index == 0 && motor_down.index == 0)
+    {
+      feeder.index = 0;
+      feeder.stop();
+    }
     show_display_status();
   }
 

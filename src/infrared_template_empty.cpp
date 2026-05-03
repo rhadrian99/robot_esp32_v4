@@ -5,7 +5,16 @@
 void update_motors()
 {
   motor_up.set_speed();
-  motor_down.set_speed(); 
+  motor_down.set_speed();
+
+  // Auto-stop feeder if both motors drop to 0 outside program mode
+  /*
+  if (!execute && feeder.index > 0 && motor_up.index == 0 && motor_down.index == 0) {
+    feeder.index = 0;
+    feeder.stop();
+    display.status(motor_up.index, motor_down.index, feeder.index);
+  }
+    */
 }
 
 void Beep_off()
@@ -147,7 +156,7 @@ void infrared_template_empty::menu(uint32_t _var)
     case hMute:       _TMute();  break;  // channel down buton
     case hReset:      _TReset();  break;  // reset
     case hTools:      _TTools();  break;  // reset
-    case hGuide:       _TGuide();  break;  // reset
+    case hGuide:       _TInfo();  break;  // reset
     
     case hB:       _TB();  break;  // reset
     case hC:       _TOK();  break;  // reset
@@ -166,7 +175,7 @@ void infrared_template_empty::menu(uint32_t _var)
 
   ///////////////////////////////////////////////////////
   void infrared_template_empty:: _TTools(){}
-  void infrared_template_empty:: _TGuide(){}
+  void infrared_template_empty:: _TInfo(){}
   void infrared_template_empty:: _TMute(){}
   void infrared_template_empty:: _T1(){}
   void infrared_template_empty:: _T2(){}
