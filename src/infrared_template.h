@@ -422,39 +422,55 @@ public:
 
   }
 
-  void virtual _VUP()
+  void virtual _VUP()  // main motor up
   {
       if (execute) return;
-      motor_up.increase_speed();
-      if (motor_up.spin==Brush::NOSPIN) {motor_down.increase_speed();}
+      if (motor_up.spin == Brush::TOPSPIN) {
+        motor_up.increase_speed();           // topspin: motor_up = main
+      } else if (motor_up.spin == Brush::SUPPORT) {
+        motor_down.increase_speed();         // backspin: motor_down = main
+      } else {                               // nospin: both same
+        motor_up.increase_speed();
+        motor_down.increase_speed();
+      }
       show_display_status();
-      
   }
 
-  void virtual _VDOWN()
+  void virtual _VDOWN()  // main motor down
   {
     if (execute) return;
-    motor_up.decrease_speed();
-    if (motor_up.spin==Brush::NOSPIN) {motor_down.decrease_speed();}
+    if (motor_up.spin == Brush::TOPSPIN) {
+      motor_up.decrease_speed();             // topspin: motor_up = main
+    } else if (motor_up.spin == Brush::SUPPORT) {
+      motor_down.decrease_speed();           // backspin: motor_down = main
+    } else {                                 // nospin: both same
+      motor_up.decrease_speed();
+      motor_down.decrease_speed();
+    }
     show_display_status();
-
   }
-  void virtual _PUP()
+  void virtual _PUP()  // support motor up
   {
       if (execute) return;
-      motor_down.increase_speed();
-      if (motor_down.spin==Brush::NOSPIN) {motor_up.increase_speed();}
+      if (motor_up.spin == Brush::TOPSPIN) {
+        motor_down.increase_speed();         // topspin: motor_down = support
+      } else if (motor_up.spin == Brush::SUPPORT) {
+        motor_up.increase_speed();           // backspin: motor_up = support
+      }
+      // nospin: P buttons inactive (both motors controlled via V)
       show_display_status();
-
   }
 
-  void virtual _PDOWN()
+  void virtual _PDOWN()  // support motor down
   {
     if (execute) return;
-    motor_down.decrease_speed();
-    if (motor_down.spin==Brush::NOSPIN) {motor_up.decrease_speed();}
+    if (motor_up.spin == Brush::TOPSPIN) {
+      motor_down.decrease_speed();           // topspin: motor_down = support
+    } else if (motor_up.spin == Brush::SUPPORT) {
+      motor_up.decrease_speed();             // backspin: motor_up = support
+    }
+    // nospin: P buttons inactive
     show_display_status();
-
   }
 
   void virtual _T0()
