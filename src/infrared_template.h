@@ -319,8 +319,8 @@ public:
       load_target_point(point_name);
 
       current_point_waiting = 0;
-      show_display_status();
       display.displayImage(IMAGES[25], .5); // ok save
+      show_display_status();
     }
   }
 

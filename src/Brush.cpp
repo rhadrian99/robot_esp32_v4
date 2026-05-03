@@ -293,7 +293,7 @@ void Brush::increase_speed()
   int microstep=MOTOR_STEP;
 
   if (spin==Brush::SUPPORT) {microstep=SUPPORT_STEP;}
-  if (spin==Brush::NOSPIN)  {microstep=SUPPORT_STEP;}
+  if (spin==Brush::NOSPIN)  {microstep=MOTOR_STEP/2;}
   //index++;
   speed+= microstep;
   if (index==0) {index++;this->speed=_SPEEDS[index]; set_speed();return;} // takes first value from array 
@@ -327,7 +327,7 @@ void Brush:: decrease_speed()
   int microstep=MOTOR_STEP;
 
   if (spin==Brush::SUPPORT) {microstep=SUPPORT_STEP;}
-  if (spin==Brush::NOSPIN)  {microstep=SUPPORT_STEP;}
+  if (spin==Brush::NOSPIN)  {microstep=MOTOR_STEP/2;}
     speed-=microstep;
     
     if (speed<_SPEEDS[1])
