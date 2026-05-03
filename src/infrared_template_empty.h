@@ -36,9 +36,6 @@ class infrared_template_empty
 public:
   infrared_template_empty();
 
-//void virtual update_motors();
-
-
 void virtual stop_all();
 
 
@@ -50,7 +47,6 @@ void virtual menu(uint32_t _var);
 
   ///////////////////////////////////////////////////////
   void virtual _TTools();
-  //void virtual _TInfo();
   void virtual _TGuide();
 
   void virtual _TMute();

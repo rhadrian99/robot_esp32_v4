@@ -10,14 +10,10 @@ using namespace std;
 
 
 char mode ='N'; // initial normal program
-//char modes[] = {'N','P','S'};
 
 #include <infrared.h>
 Ticker BrushTimer;
-//Ticker IRTimer;
-//Ticker StatusTimer;
 Ticker BeepTimer;
-//Ticker memory_timer;
 
  
 
@@ -42,85 +38,6 @@ ServoX tilt;
 Brush motor_up;
 Brush motor_down;
 
-
-void status()
-{
-    
-  DEBUG("********************** mode: ",true);
-  motor_up.reporting();NL();
-  motor_down.reporting();NL();
-  
-  DEBUG("STATUS: "+ motor_up.motor_position+"  -> "+motor_up.spintype+", speed = ",motor_up.speed,true) ;
-  DEBUG("STATUS: "+ motor_down.motor_position+"-> "+motor_down.spintype+", speed = ",motor_down.speed,false) ;
-  NL();
-    
-  DEBUG("STATUS:  SERVO PAN pos   ->" ,pan.read_pos(),false);
-  DEBUG("         [---] PAN MIN   -> " ,pan.min_value,false);
-  DEBUG("         [---] PAN MAX   -> " ,pan.max_value,false);
-  NL();
-  NL();
-  DEBUG("STATUS:  SERVO TILT pos  ->",tilt.read_pos(),false) ;
-  DEBUG("         [---] TILT MIN -> " ,tilt.min_value,false);
-  DEBUG("         [---] TILT MAX -> " ,tilt.max_value,false);
-  NL();
-  NL();
-  DEBUG("STATUS: FEEDER ENABLE    -> " ,feeder.enable,false);
-  NL();
-  DEBUG("               index     -> " ,feeder.index,false);
-  NL();
-  DEBUG("               speed     -> ",feeder.speed,false) ;
-  NL();
-  DEBUG("               direction -> " ,feeder.directie,false);
-  NL();
-  DEBUG("               timeout   -> " ,feeder.timeout_const,false);
-  NL();
-
-
-}
-
-void printMemoryUsage() {
-  Serial.print("Free Heap: ");
-  Serial.print(ESP.getFreeHeap());
-  Serial.println(" bytes");
-}
-
-void printMinMemoryUsage() {
-  Serial.print("Minimum Free Heap: ");
-  Serial.print(ESP.getMinFreeHeap());
-  Serial.println(" bytes");
-}
-
-void printMaxAllocHeap() {
-  Serial.print("Max Allocatable Heap: ");
-  Serial.print(ESP.getMaxAllocHeap());
-  Serial.println(" bytes");
-}
-
-void printTaskStackUsage() {
-  Serial.print("Task Stack High Water Mark: ");
-  Serial.print(uxTaskGetStackHighWaterMark(NULL)); // For the current task
-  Serial.println(" bytes");
-}
-
-void printMemoryStats() {
-  Serial.println("=== Memory Statistics ===");
-  Serial.print("Free Heap: ");
-  Serial.print(ESP.getFreeHeap());
-  Serial.println(" bytes");
-
-  Serial.print("Minimum Free Heap: ");
-  Serial.print(ESP.getMinFreeHeap());
-  Serial.println(" bytes");
-
-  Serial.print("Max Allocatable Heap: ");
-  Serial.print(ESP.getMaxAllocHeap());
-  Serial.println(" bytes");
-
-  Serial.print("Task Stack High Water Mark: ");
-  Serial.print(uxTaskGetStackHighWaterMark(NULL));
-  Serial.println(" bytes");
-  Serial.println("=========================");
-}
 
 
 static uint32_t last_ir_value = 0;
@@ -188,10 +105,6 @@ void setup()
  Point2.name="Point2";
  Point3.name="Point3";
 
- //Point1=target_load_nvm(Point1);
- //Point2=target_load_nvm(Point2);
- //Point3=target_load_nvm(Point3);
-
  // feeder.init_pins(); // DO NOT CALL: pinMode() on step pin breaks FAS RMT/MCPWM GPIO routing
  feeder.load_timeout_const(); // NVS now initialized — safe to load
 
@@ -209,20 +122,14 @@ void setup()
   if (ROBOT_ADRIAN) { pan.init(PAN, F("PAN"),5,55);}
   if (ROBOT_NEW) { pan.init(PAN, F("PAN"),0,40);}
   pan.load_pos();
-  
-  //delay(200);
   if (ROBOT_IRINEL) { tilt.init(TILT,F("TILT"),15,60);} // 
   if (ROBOT_ADRIAN) { tilt.init(TILT,F("TILT"),5,60);} // 
   if (ROBOT_NEW) { tilt.init(TILT,F("TILT"),0,40);} // new join mechanism
   tilt.load_pos();
 
   
-  BrushTimer.attach_ms(50, update_motors);  
-  //IRTimer.attach_ms(50, receive_ir);  
-  BeepTimer.attach_ms(1000*60*8, Beep_off);  // silent the beef from motors at every 8 min
-  //memory_timer.attach_ms(1000*5, printMemoryStats);  // silent the beef from motors at every 8 min
-  //BeepTimer.attach_ms(1000*20, Beep_off);  
-  //StatusTimer.attach_ms(4000, status); 
+  BrushTimer.attach_ms(50, update_motors);
+  BeepTimer.attach_ms(1000*60*8, Beep_off);
   
   display.clear();
   feeder.enable=true;

@@ -60,7 +60,6 @@ void infrared_template_empty::stop_all()
 
   tempo_empty(800);
   display.clear();
-  //tempo_empty(10);
 }
  
  infrared_template_empty::infrared_template_empty()
@@ -70,18 +69,11 @@ void infrared_template_empty::stop_all()
  
 void infrared_template_empty::switch_program(char _mode)
 {
-  //int size = *(&modes + 1) - modes;
    switch (_mode)
     {
     case 'N': 
       mode='S';
       break;
-    /*
-    case 'P': // 
-      mode='S';
-
-      break;  
-    */
     case 'S': // adjusting servo position
       mode='M';
       break;
@@ -135,8 +127,6 @@ void infrared_template_empty::menu(uint32_t _var)
     case hT9:        _T9();      break;
     
     case hT0:        _T0();      break;
-    
-    //case hTOK:       _TOk();     break;
     
     case hTStar:     _Tstar();   break;
     case hTdiez:     _Tdiez();   break;

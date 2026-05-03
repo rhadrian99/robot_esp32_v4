@@ -125,7 +125,6 @@ public:
     blink_state = false;
     blink_ticker.attach_ms(500, _static_blink_toggle);
     
-    //display.displayImage(IMAGES[12], 1);
     display.show_char_no_delay('2');
   }
 
@@ -404,8 +403,6 @@ public:
   {
       
       if (execute) return;
-
-       if (execute) return;
       
       if ((motor_up.index>0)  || (motor_down.index>0)) // allow feeder to feed balls only if one motor is active
       {
@@ -476,16 +473,6 @@ public:
   void virtual _T0()
   {
       if (execute) return;
-
-       /*
-  0x00003a2a1a0b3a00,  //18     //16
-  0x00003a2a3a2b3a00,  //19     //18
-  0x0000775152547700,  //20     //20
-  0x0000771162447700,  //21     //22
-  0x0000474172541700,  //22     //24
-  0x0000775132143700,  //23     //26
-  0x0000775172547700   //24     //28 
-  */
     if (feeder.index>0) return;
     feeder.load_timeout_const();   
     feeder.timeout_const+=20;
@@ -627,9 +614,7 @@ public:
   void program()
   {
     if (execute==false) return;
-    //int time=500; 
-    //int time=1000; // varianta irinel
-    int time=700; // varianta pisoi
+    int time=700;
     
     for (int i = 1; i <= 6; i++) {
       load_point_from_nvm(i);
