@@ -7,9 +7,7 @@
 #include <Arduino.h>
 #include <string.h>
 #include <FastAccelStepper.h>
-//#include <ESP_FlexyStepper.h>
 #include <Preferences.h>
-#include "ServoX.h"
 
 
 
@@ -55,8 +53,6 @@ void load_direction();
 void save_direction();
 void save_timeout_const();
 void load_timeout_const();
-
-void play_music();
 
 private:
 

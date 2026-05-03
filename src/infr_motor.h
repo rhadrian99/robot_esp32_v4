@@ -165,7 +165,7 @@ class infr_motor: public infrared_template_empty
 
     motor_up.reporting();
     motor_down.reporting();
-    feeder.play_music();
+    //feeder.play_music(); // removed: play_music() no longer exists in StepperX
 
   }
  

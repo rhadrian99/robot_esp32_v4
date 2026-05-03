@@ -8,25 +8,17 @@ using namespace std;
 #define VERSION 6         // added in april 2025
 #define MINOR_VERSION 1 //
 
-#define BRUSH_SPEED_STEP 30 // millisec
-#define TIMEOUT_PROGRAM 200 // millisec
-#define STEPPER_SPEED_PROGRAM 100 // millisec
-int enable_scramble=0;
-
-
-bool timeractive=true;
-int var = 0;
 
 char mode ='N'; // initial normal program
 //char modes[] = {'N','P','S'};
 
 #include <infrared.h>
 Ticker BrushTimer;
-Ticker IRTimer;
-Ticker StatusTimer;
+//Ticker IRTimer;
+//Ticker StatusTimer;
 Ticker BeepTimer;
-Ticker memory_timer;
-Ticker scramble_timer;
+//Ticker memory_timer;
+
  
 
 extern void update_motors();
@@ -46,8 +38,6 @@ IRrecv irrecv(RECV_PIN);
 
 ServoX pan;
 ServoX tilt;
-ServoX scramble;
-
 
 Brush motor_up;
 Brush motor_down;
@@ -133,41 +123,36 @@ void printMemoryStats() {
 }
 
 
+static uint32_t last_ir_value = 0;
+static unsigned long last_ir_time = 0;
+const unsigned long IR_DEBOUNCE_MS = 800;
+const unsigned long IR_DEBOUNCE_PROG_MS = 3000; // Samsung retransmits full code ~100ms; when program runs, block TStar retransmit
+
 void receive_ir()
 {
-  
-if (irrecv.decode())
+  if (irrecv.decode())
   {
-    uint32_t receive_value = irrecv.decodedIRData.decodedRawData ;
-   
-    if (receive_value>0)
+    uint32_t receive_value = irrecv.decodedIRData.decodedRawData;
+    irrecv.resume(); // always resume first
+
+    if (receive_value > 0)
     {
-      DEBUG(F("IR value: "),receive_value,true); 
-      Serial.print("IR Hex: 0x");
-      Serial.println(receive_value, HEX);
-      
-      // Debug: check if it's a left/right arrow
-      if (receive_value == TLEFT || receive_value == hTLEFT) {
-        Serial.println(">>> TLEFT matched!");
-      } else if (receive_value == TRIGHT || receive_value == hTRIGHT) {
-        Serial.println(">>> TRIGHT matched!");
-      } else {
-        Serial.print("IR code NOT matched with any function. Mode: ");
-        Serial.println(mode);
+      unsigned long now = millis();
+      bool same_code = (receive_value == last_ir_value);
+      // When program is running, use longer debounce for start/stop codes to prevent
+      // Samsung retransmit (every ~100ms) from accidentally stopping execution mid-cycle
+      bool is_start_stop = (receive_value == TStar || receive_value == hTStar);
+      unsigned long debounce = (execute && same_code && is_start_stop) ? IR_DEBOUNCE_PROG_MS : IR_DEBOUNCE_MS;
+      bool too_fast  = (now - last_ir_time) < debounce;
+
+      if (!(same_code && too_fast)) // block only if same code AND within debounce window
+      {
+        last_ir_value = receive_value;
+        last_ir_time  = now;
+        DEBUG(F("IR value: "), receive_value, true); Serial.println();
+        infrared_menu(receive_value, mode);
       }
-      
-      infrared_menu(receive_value, mode);
-      //tempo_empty(100);
-      status();
-      
     }
-    // Receive the next value
-    irrecv.resume();
-    
-  }
-  else
-  {
-      //bluetooh_receive(); 
   }
 }
 
@@ -179,27 +164,19 @@ void IRTask(void* parameter) {
 }
 
 
-void run_scramble() {
-  
-  if (enable_scramble)
-  {
-    scramble.startMove(0);
-    scramble.startMove(180);
-  }
-}
+
 
 
 void setup()
 {
-   
+
+ Serial.begin(115200);
+ Serial.flush();
 
  irrecv.enableIRIn();
  
- xTaskCreatePinnedToCore(IRTask, "IR Task", 2048, NULL, 1, NULL, 1); // Run IR task on Core 0
-
- Serial.begin(9600);
- Serial.flush();
-
+ xTaskCreatePinnedToCore(IRTask, "IR Task", 4096, NULL, 2, NULL, 0); // Core 0 — isolated from loop()/stepper
+ 
  target1.name="target1";
  target2.name="target2";
  target3.name="target3";
@@ -207,43 +184,36 @@ void setup()
  Point1.name="Point1";
  Point2.name="Point2";
  Point3.name="Point3";
- Point5.name="Point5";
- Point6.name="Point6";
- 
 
  //Point1=target_load_nvm(Point1);
  //Point2=target_load_nvm(Point2);
  //Point3=target_load_nvm(Point3);
 
- feeder.init_pins();
+ // feeder.init_pins(); // DO NOT CALL: pinMode() on step pin breaks FAS RMT/MCPWM GPIO routing
+ feeder.load_timeout_const(); // NVS now initialized — safe to load
 
   motor_down.check_data(false); 
 
   motor_up.init(MOT_UP,Brush::TOPSPIN,"MOTOR UP") ;
   motor_down.init(MOT_DOWN,Brush::SUPPORT,"MOTOR DOWN");
   
- #define ROBOT_IRINEL 0
- #define ROBOT_ADRIAN 1
+ #define ROBOT_IRINEL 1
+ #define ROBOT_ADRIAN 0
  #define ROBOT_NEW 0
 
 
   if (ROBOT_IRINEL) { pan.init(PAN, F("PAN"),5,55);}
-  if (ROBOT_ADRIAN) { pan.init(PAN, F("PAN"),10,48);}
+  if (ROBOT_ADRIAN) { pan.init(PAN, F("PAN"),5,55);}
   if (ROBOT_NEW) { pan.init(PAN, F("PAN"),0,40);}
-   scramble.init(SCRAMBLE, F("SCRAMBLE"),0,180);
   pan.load_pos();
   
   //delay(200);
   if (ROBOT_IRINEL) { tilt.init(TILT,F("TILT"),15,60);} // 
-  if (ROBOT_ADRIAN) { tilt.init(TILT,F("TILT"),10,55);} // 
+  if (ROBOT_ADRIAN) { tilt.init(TILT,F("TILT"),5,60);} // 
   if (ROBOT_NEW) { tilt.init(TILT,F("TILT"),0,40);} // new join mechanism
   tilt.load_pos();
 
-  //scramble.startMove(0); 
-   //scramble.startMove(180); 
-   //scramble.startMove(0); 
-
-  scramble_timer.attach_ms(3000, run_scramble); // run scramble every 5 min 
+  
   BrushTimer.attach_ms(50, update_motors);  
   //IRTimer.attach_ms(50, receive_ir);  
   BeepTimer.attach_ms(1000*60*8, Beep_off);  // silent the beef from motors at every 8 min
@@ -271,19 +241,10 @@ void loop()
 
   if (execute==false && mode=='N') // outside programming area
   {
-    //Serial.println("Normal mode");
     
     feeder.move_stepper(100,true); /// true is for delayed movement
     
   }
-  
-  if (feeder.enable==false && execute==false)
-  {
-    //feeder.stop();    
-  }
-  
-  
-  
   
 
 } //////////////////////////////////////////////////// end loop

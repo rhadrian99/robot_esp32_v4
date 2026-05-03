@@ -150,11 +150,12 @@ void _T5() override
     
     //if (tilt.read_pos()<tilt.max_value )  tilt.startMove(tilt.max_value) ; else tilt.startMove(tilt.min_value );
     
-    scramble.startMove(0);
-    scramble.startMove(180);
-    scramble.startMove(0);
-    scramble.startMove(180);
-    scramble.startMove(0);
+    // scramble servo removed from robot_tenis_v7.cpp
+    //scramble.startMove(0);
+    //scramble.startMove(180);
+    //scramble.startMove(0);
+    //scramble.startMove(180);
+    //scramble.startMove(0);
 
     //pan.move(60,true,true);
     //tilt.move(60,true,true);

@@ -8,13 +8,6 @@ extern void DEBUG(String label, int64_t value, bool newline);
 extern void DEBUG(int64_t value, bool newline);
 extern void DEBUG(String label, bool newline);
 
-extern ServoX scramble;
-extern int enable_scramble;
-
-#define STEPS 50;
-#define STEPS_REDUCTOR 200;
-#define SPEED 100;
-#define REDUCTION_STEPPER_SPEED 2.75 // millisec
 
 // 200 steps per rotation  1.8 degrees per step
 // 50 steps/s => complete rotation in 4 s => 1 ball/ 1sec // 4 wings 
@@ -22,21 +15,6 @@ extern int enable_scramble;
 // formula  ==>  200/Steps 
 
 // connect and configure the stepper motor to its IO pins
-
-//#define STEP_PIN 12
-//#define DIR_PIN  14
-//#define EN_PIN   13 // Opțional, dacă ai pin de Enable
-
-// Definirea frecvențelor pentru câteva note (Hz)
-#define NOTE_C4  262
-#define NOTE_D4  294
-#define NOTE_E4  330
-#define NOTE_F4  349
-#define NOTE_G4  392
-#define NOTE_A4  440
-#define NOTE_B4  494
-#define NOTE_C5  523
-
 
 uint8_t FEEDER[]={0, 9, 8, 7, 6, 5, 4, 3, 2};
 
@@ -48,51 +26,41 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
    _dirPin  = dirPin;
    _stopPin = stopPin;   
 
+   // Enable pin managed manually via start()/stop() — NOT via FAS setAutoEnable,
+   // because setAutoEnable + manual digitalWrite on the same pin causes conflicts.
+   pinMode(_stopPin, OUTPUT);
+   digitalWrite(_stopPin, HIGH); // start disabled (active LOW driver)
+
    engine.init();
   _stepper = engine.stepperConnectToPin(_stepPin);
   if (_stepper) {
     _stepper->setDirectionPin(_dirPin,true);
-    _stepper->setEnablePin(_stopPin);
-   
-    _stepper->setAutoEnable(true);
-   
-    // If auto enable/disable need delays, just add (one or both):
-     _stepper->setDelayToEnable(5);
-     _stepper->setDelayToDisable(2000); // was 300 before
 
-    //_stepper->setSpeedInUs(10);  // the parameter is us/step !!!
-    //_stepper->setAcceleration(10000); //tmc2208 v1
-    //_stepper->setSpeedInHz(400);  //tmc2208 v1
-
-    _stepper->setAcceleration(10000); //tmc2208 v1
-    //_stepper->setSpeedInHz(200);  //tmc2208 v1
-    _stepper->setSpeedInHz(3200);  //tmc2208 v1
+    _stepper->setAcceleration(10000);
+    _stepper->setSpeedInHz(1000);
     
   }
    timeout_const=200;
    directie=-1; //1  for normal
-   load_direction();
+   //load_direction();
+      
    
+  // if (directie ==-1 ) {_stepper->setDirectionPin(_dirPin,false);}
+   //else {_stepper->setDirectionPin(_dirPin,true);}
    
+   //_stepper->setDirectionPin(_dirPin,false);
 
    
-   directie=1; //1  for normal
-   //directie=0; //0  for  robot irinel
-   
-   if (directie ==-1 ) {_stepper->setDirectionPin(_dirPin,false);}
-   else {_stepper->setDirectionPin(_dirPin,true);}
-   
-   _stepper->setDirectionPin(_dirPin,false);
-
-   //directie=-1;
-   save_direction();
+   //save_direction();
   
   //_stepper.setAccelerationInStepsPerSecondPerSecond(500);
 
    index=0;
    memcpy(_FEEDER, FEEDER, sizeof(FEEDER));
    name="directie";
-   
+   // load_timeout_const() intentionally NOT called here — NVS is not initialized yet
+   // (global constructor runs before setup()). Call feeder.load_timeout_const() in setup().
+
   stop();
   this->enable=true;
 }
@@ -108,34 +76,17 @@ void StepperX::init_pins()
   
 }
 
-void StepperX::play_music()
-{
-  // Define o melodie simplă (note și durate)
-  int melody[] = {NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5};
-  int noteDurations[] = {500, 500, 500, 500, 500, 500, 500, 500}; // Durata fiecărei note în milisecunde
-
-  for (int thisNote = 0; thisNote < 8; thisNote++) {
-    int noteDuration = noteDurations[thisNote];
-    _stepper->setSpeedInHz(melody[thisNote]); // Setează frecvența pentru nota curentă
-    this->start();
-    _stepper->move(100); // Mișcă motorul pentru a produce sunetul
-    delay(noteDuration); // Așteaptă durata notei
-    this->stop(); // Oprește motorul între note
-    delay(50); // Pauză scurtă între note
-  }
-
-}
-
-
 
 void StepperX::start(){
     //_stepper.deactivateBrake();
-         
+    
+     
     if (digitalRead(_stopPin)==HIGH)
     {
       digitalWrite(_stopPin, LOW); // start the feeder
-      this->enable=true;
+      
     }
+    this->enable=true;
 }
 
 void StepperX::stop(){
@@ -143,10 +94,11 @@ void StepperX::stop(){
   if (digitalRead(_stopPin)==LOW)
   {
     digitalWrite(_stopPin, HIGH); // stop the feeder
-    this->enable=false;
-    enable_scramble=0;
-  }
-  
+      }
+  this->enable=false;
+  this->index=0;
+  this->speed=0;
+
 }
 
 
@@ -160,7 +112,6 @@ void StepperX::increase_speed()
   if (index>0)
   {
     start();
-    enable_scramble=1;
  }
         
 }
@@ -178,12 +129,6 @@ void StepperX::decrease_speed()
    else
    {  start();}
   
-   if (this->index==0)
-   {
-     stop();
-     enable_scramble=0;
-
-   }
 }
 
 /*
@@ -207,9 +152,7 @@ steps/sec
   // stop
   // timeout based on FEEDER index value
   
-  _speed=50*REDUCTION_STEPPER_SPEED*8; //tmc2208 v1 ms1 jumper on
-  //_speed=200*8; //tmc2208 v1 ms1 jumper on
-  //_speed=50; //a4938
+    _speed=50*2.75*8; //tmc2208 v1 ms1 jumper offa4938
 
   if (prog==true)
   { 
@@ -218,31 +161,19 @@ steps/sec
   }
   else {start();}
         
-  
-    
   _stepper->setCurrentPosition(0);
   _stepper->move(directie*_speed);
   
-
   while (_stepper->isRunning())
   {
-    //_stepper->setSpeedInHz(300);
-    
     yield();
   }
 
    if (prog==true)
    { 
-      load_timeout_const(); 
-      uint16_t timeout = FEEDER[index] *timeout_const;  // 160 ---> 280 msec
+      uint16_t timeout = _FEEDER[index] *timeout_const;  // 160 ---> 280 msec
       tempo_empty(timeout);
    }
-   
-   //Serial.print("FEEDER pos: ");Serial.print(_stepper->getCurrentPosition(),DEC);
-   //Serial.print(" SPEED: ");   Serial.print(millis() - ref,DEC); Serial.println(" milisec/ball");
-   //speed =millis() - ref;
-   
-   
   }
 
   void StepperX::load_direction()
