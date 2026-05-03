@@ -66,7 +66,7 @@ target_point target_load_nvm(target_point P)
 #include "infr_program.h"
 #include "infr_motor.h"
 
-bool execute=false;
+volatile bool execute=false;
 
 
 

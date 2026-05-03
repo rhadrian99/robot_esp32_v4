@@ -532,19 +532,18 @@ public:
             
       if (execute==false)  //stop the programming mode
       {
-        mode='N';
-        display.displayImage(IMAGES[12],1); // ok save
+        // stop motors FIRST — before any display/delay calls
+        // BrushTimer fires every 50ms and calls update_motors() → set_speed() with old pos() speed
+        // if we delay here (display), motors keep running for that duration
         feeder.index=0;
         feeder.stop();
-
-        motor_down.stop();
         motor_up.stop();
-        motor_down.index=0;
-        motor_up.index=0;
-
+        motor_down.stop();
         motor_up.set_speed(0);
         motor_down.set_speed(0);
 
+        mode='N';
+        display.displayImage(IMAGES[12],1); // ok save
         initial_position(); // servo to neutral position
       }
       else // start the program  execute=true
@@ -564,29 +563,20 @@ public:
 
   void _TPower() override
   {
+    // stop motors FIRST — before any blocking delay/display
     feeder.index=0;
     feeder.stop();
+    motor_up.stop();
+    motor_down.stop();
+    motor_up.set_speed(0);
+    motor_down.set_speed(0);
 
     execute=false;
     mode='N';
-    
-    motor_down.index=0;
-    motor_up.index=0;
-
-    motor_up.set_speed(0);
-    motor_down.set_speed(0);
 
     tempo_empty(500);
-    
     initial_position(); // servo to neutral position
-        
     display.show_char(mode, 0.5);
-
-    motor_down.index=0;
-    motor_up.index=0;
-    motor_up.set_speed(0);
-    motor_down.set_speed(0);
-
   }
 
   void virtual _Tdiez()
@@ -695,6 +685,11 @@ public:
   
   void pos(target_point P,uint16_t timeout_throw)
   {
+    // Check execute FIRST — before setting any motor speeds.
+    // BrushTimer fires every 50ms calling update_motors() → set_speed().
+    // If we set motor_up.speed here and then return on execute==false,
+    // BrushTimer will use the new speed and restart the motors.
+    if (execute==false) {return;}
 
     motor_up.speed=P._up;
     motor_down.speed=P._down;
@@ -703,7 +698,6 @@ public:
     motor_down.index=P.index_down;
     show_display_status();
     
-    if (execute==false) {return;}
     pan.startMove(P._pan_pos);
     tilt.startMove(P._tilt_pos);
     

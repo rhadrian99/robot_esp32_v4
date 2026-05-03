@@ -142,7 +142,10 @@ void receive_ir()
       // When program is running, use longer debounce for start/stop codes to prevent
       // Samsung retransmit (every ~100ms) from accidentally stopping execution mid-cycle
       bool is_start_stop = (receive_value == TStar || receive_value == hTStar);
-      unsigned long debounce = (execute && same_code && is_start_stop) ? IR_DEBOUNCE_PROG_MS : IR_DEBOUNCE_MS;
+      // Always use long debounce for TStar — Samsung retransmits every ~100ms.
+      // Without this, after execute=false the debounce drops to 800ms and the
+      // next Samsung retransmit (~100-800ms later) toggles execute back to true.
+      unsigned long debounce = (same_code && is_start_stop) ? IR_DEBOUNCE_PROG_MS : IR_DEBOUNCE_MS;
       bool too_fast  = (now - last_ir_time) < debounce;
 
       if (!(same_code && too_fast)) // block only if same code AND within debounce window

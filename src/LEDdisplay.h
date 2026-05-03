@@ -9,7 +9,7 @@
 extern StepperX feeder;
 extern Brush motor_up;
 extern Brush motor_down;
-extern bool execute;
+extern volatile bool execute;
 
 #define NBR_MTX 1 //was 2
 
