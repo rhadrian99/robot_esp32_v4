@@ -98,8 +98,67 @@ void infrared_template_empty::switch_program(char _mode)
    
 
   }
+static const char* ir_code_name(uint32_t v)
+{
+  switch (v)
+  {
+    case T0:      return "T0";
+    case T1:      return "T1";
+    case T2:      return "T2";
+    case T3:      return "T3";
+    case T4:      return "T4";
+    case T5:      return "T5";
+    case T6:      return "T6";
+    case T7:      return "T7";
+    case T8:      return "T8";
+    case T9:      return "T9";
+    case Tdiez:   return "Tdiez";
+    case TStar:   return "TStar";
+    case TOK:     return "TOK";
+    case TLEFT:   return "TLEFT";
+    case TRIGHT:  return "TRIGHT";
+    case TUP:     return "TUP";
+    case TDOWN:   return "TDOWN";
+    case hT0:     return "hT0";
+    case hT1:     return "hT1";
+    case hT2:     return "hT2";
+    case hT3:     return "hT3";
+    case hT4:     return "hT4";
+    case hT5:     return "hT5";
+    case hT6:     return "hT6";
+    case hT7:     return "hT7";
+    case hT8:     return "hT8";
+    case hT9:     return "hT9";
+    case hTdiez:  return "hTdiez";
+    case hTStar:  return "hTStar";
+    case hTLEFT:  return "hTLEFT";
+    case hTRIGHT: return "hTRIGHT";
+    case hTUP:    return "hTUP";
+    case hTDOWN:  return "hTDOWN";
+    case hM1up:   return "hM1up";
+    case hM1down: return "hM1down";
+    case hM2up:   return "hM2up";
+    case hM2down: return "hM2down";
+    case hMute:   return "hMute";
+    case hPower:  return "hPower";
+    case hReset:  return "hReset";
+    case hTools:  return "hTools";
+    case hGuide:  return "hGuide";
+    case hB:      return "hB";
+    case hC:      return "hC";
+    case hD:      return "hD";
+    default:      return nullptr;
+  }
+}
+
 void infrared_template_empty::menu(uint32_t _var)
   {
+    const char* name = ir_code_name(_var);
+    if (name)
+      Serial.printf(" -> %s\n", name);
+    else
+      Serial.printf(" -> NOT DEFINED (0x%08X)\n", _var);
+
     switch (_var)
     {
 
@@ -163,11 +222,6 @@ void infrared_template_empty::menu(uint32_t _var)
     case hD:       _TD();  break;  // reset
   
     default:
-      Serial.print("UNKNOWN IR CODE: ");
-      Serial.print(_var);
-      Serial.print(" (0x");
-      Serial.print(_var, HEX);
-      Serial.println(")");
       break;
     }
     

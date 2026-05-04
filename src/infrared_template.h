@@ -678,6 +678,7 @@ public:
     if (execute)
       return;
     pan.startMove(pan.read_pos() + SERVO_STEP);
+    Serial.printf("PAN  pos=%d  min=%d  max=%d\n", pan.read_pos(), pan.min_value, pan.max_value);
     display.displayImage(IMAGES[11], 0.5);
     show_display_status();
   }
@@ -687,6 +688,7 @@ public:
     if (execute)
       return;
     pan.startMove(pan.read_pos() - SERVO_STEP);
+    Serial.printf("PAN  pos=%d  min=%d  max=%d\n", pan.read_pos(), pan.min_value, pan.max_value);
     display.displayImage(IMAGES[9], 0.5);
     show_display_status();
   }
@@ -696,6 +698,7 @@ public:
     if (execute)
       return;
     tilt.startMove(tilt.read_pos() - SERVO_STEP);
+    Serial.printf("TILT pos=%d  min=%d  max=%d\n", tilt.read_pos(), tilt.min_value, tilt.max_value);
     display.displayImage(IMAGES[8], 0.5);
     show_display_status();
   }
@@ -705,6 +708,7 @@ public:
     if (execute)
       return;
     tilt.startMove(tilt.read_pos() + SERVO_STEP);
+    Serial.printf("TILT pos=%d  min=%d  max=%d\n", tilt.read_pos(), tilt.min_value, tilt.max_value);
     display.displayImage(IMAGES[10], 0.5);
     show_display_status();
   }
