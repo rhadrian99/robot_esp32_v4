@@ -4,6 +4,7 @@ using namespace std;
 #include <common.h>
 #include <Ticker.h>
 #include <Preferences.h>
+#include "WebControl.h"
 
 #define VERSION 6       // added in april 2025
 #define MINOR_VERSION 1 //
@@ -24,6 +25,8 @@ LedControl lc = LedControl(data_Pin, clk_Pin, cs_Pin, NBR_MTX);
 LEDdisplay display(data_Pin, clk_Pin, cs_Pin, NBR_MTX);
 
 IRrecv irrecv(RECV_PIN);
+
+WebControl webControl;
 
 ServoX pan;
 ServoX tilt;
@@ -141,6 +144,8 @@ void setup()
   display.clear();
   feeder.enable = true;
   display.show_char('L', 1);
+
+  webControl.begin(); // start WiFi + HTTP server on Core 0
 }
 
 // main program
