@@ -1,11 +1,13 @@
 #include "WebControl.h"
-#include <common.h>   // hTUP, hTDOWN, hTLEFT, hTRIGHT, hPower, hMute
+#include <common.h>
 #include "Brush.h"
+#include "StepperX.h"
 
 extern void infrared_menu(uint32_t _var, char _mode);
 extern char mode;
 extern Brush motor_up;
 extern Brush motor_down;
+extern StepperX feeder;
 
 WebControl *WebControl::_instance = nullptr;
 
@@ -53,8 +55,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div class="card">
     <div class="row">
-      <div id="spin-label">...</div>
-      <button class="btn btn-mute" onclick="cmd('mute')">&#128263;</button>
+      <button class="btn btn-mute" id="btn-mute" onclick="cmd('mute')">...</button>
       <button class="btn btn-power" onclick="cmd('power')">&#9211;</button>
     </div>
   </div>
@@ -75,16 +76,25 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div class="card slider-wrap">
     <div class="slider-item">
-      <label>Motor UP <span id="m1val">0</span>/8</label>
+      <label><span id="m1label">MAIN</span> <span id="m1val">0</span>/8</label>
       <input type="range" min="0" max="8" value="0" id="m1"
              oninput="document.getElementById('m1val').textContent=this.value"
              onchange="setMotor(1,this.value)">
     </div>
     <div class="slider-item">
-      <label>Motor DOWN <span id="m2val">0</span>/8</label>
+      <label>SUPPORT <span id="m2val">0</span>/8</label>
       <input type="range" min="0" max="8" value="0" id="m2"
              oninput="document.getElementById('m2val').textContent=this.value"
              onchange="setMotor(2,this.value)">
+    </div>
+  </div>
+
+  <div class="card slider-wrap">
+    <div class="slider-item">
+      <label>Frecventa bile <span id="fval">0</span>/8</label>
+      <input type="range" min="0" max="8" value="0" id="f"
+             oninput="document.getElementById('fval').textContent=this.value"
+             onchange="setFeeder(this.value)">
     </div>
   </div>
 
@@ -104,20 +114,39 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .then(t=>document.getElementById('status').textContent=t)
         .catch(()=>document.getElementById('status').textContent='error');
     }
+    function setFeeder(v){
+      fetch('/feeder?v='+v)
+        .then(r=>r.text())
+        .then(t=>document.getElementById('status').textContent=t)
+        .catch(()=>document.getElementById('status').textContent='error');
+    }
     function pollStatus(){
       fetch('/status')
         .then(r=>r.json())
         .then(d=>{
-          document.getElementById('spin-label').textContent=d.spin;
+          document.getElementById('btn-mute').textContent=d.spin;
+          document.getElementById('m1label').textContent=d.spin;
           var m1=document.getElementById('m1');
           var m2=document.getElementById('m2');
+          var nospin=(d.spin==='NOSPIN');
+          m2.disabled=nospin;
+          m2.style.opacity=nospin?'0.3':'1';
           if(document.activeElement!==m1){
             m1.value=d.m1;
             document.getElementById('m1val').textContent=d.m1;
           }
           if(document.activeElement!==m2){
-            m2.value=d.m2;
-            document.getElementById('m2val').textContent=d.m2;
+            m2.value=nospin?0:d.m2;
+            document.getElementById('m2val').textContent=nospin?0:d.m2;
+          }
+          var f=document.getElementById('f');
+          var motorsOff=(d.m1===0 && d.m2===0);
+          f.disabled=motorsOff;
+          f.style.opacity=motorsOff?'0.3':'1';
+          if(motorsOff){f.value=0;document.getElementById('fval').textContent=0;}
+          if(document.activeElement!==f && !motorsOff){
+            f.value=d.f;
+            document.getElementById('fval').textContent=d.f;
           }
         }).catch(()=>{});
     }
@@ -153,6 +182,7 @@ void WebControl::_register_routes()
   _server.on("/mute",   HTTP_GET, _s_mute);
   _server.on("/motor1", HTTP_GET, _s_motor1);
   _server.on("/motor2", HTTP_GET, _s_motor2);
+  _server.on("/feeder", HTTP_GET, _s_feeder);
   _server.on("/status", HTTP_GET, _s_status);
 }
 
@@ -206,7 +236,19 @@ void WebControl::_handle_motor1()
     int v = _server.arg("v").toInt();
     if (v < 0) v = 0;
     if (v > 8) v = 8;
-    motor_up.set_speed((uint8_t)v);
+    // Slider 1 = motorul de spin principal
+    // TOPSPIN: motor_up=TOPSPIN  → slider1 → motor_up
+    // BACKSPIN: motor_down=BACKSPIN → slider1 → motor_down
+    // NOSPIN: ambele sincronizat
+    if (motor_down.spin == Brush::BACKSPIN)
+      motor_down.set_speed((uint8_t)v);
+    else if (motor_up.spin == Brush::NOSPIN)
+    {
+      motor_up.set_speed((uint8_t)v);
+      motor_down.set_speed((uint8_t)v);
+    }
+    else
+      motor_up.set_speed((uint8_t)v); // TOPSPIN
   }
   _server.send(200, "text/plain", "M1 OK");
 }
@@ -218,22 +260,62 @@ void WebControl::_handle_motor2()
     int v = _server.arg("v").toInt();
     if (v < 0) v = 0;
     if (v > 8) v = 8;
-    motor_down.set_speed((uint8_t)v);
+    // Slider 2 = motorul de support
+    // TOPSPIN: motor_down=SUPPORT → slider2 → motor_down
+    // BACKSPIN: motor_up=SUPPORT  → slider2 → motor_up
+    // NOSPIN: motor_down (sau ignorat, deja sincronizat de slider1)
+    if (motor_up.spin == Brush::SUPPORT)
+      motor_up.set_speed((uint8_t)v);
+    else
+      motor_down.set_speed((uint8_t)v);
   }
   _server.send(200, "text/plain", "M2 OK");
+}
+
+void WebControl::_handle_feeder()
+{
+  if (_server.hasArg("v"))
+  {
+    int v = _server.arg("v").toInt();
+    if (v < 0) v = 0;
+    if (v > 8) v = 8;
+    // Don't start feeder when both motors are stopped
+    if (v > 0 && motor_up.index == 0 && motor_down.index == 0)
+    {
+      _server.send(200, "text/plain", "F DISABLED");
+      return;
+    }
+    feeder.index = (int8_t)v;
+    if (v == 0)
+      feeder.stop();
+    else
+      feeder.start();
+  }
+  _server.send(200, "text/plain", "F OK");
 }
 
 void WebControl::_handle_status()
 {
   String spin = motor_up.spintype;
   // translate internal spintype to user-friendly label
-  if (motor_up.spin == Brush::TOPSPIN)   spin = "TOPSPIN";
+  if (motor_up.spin == Brush::TOPSPIN)     spin = "TOPSPIN";
   else if (motor_up.spin == Brush::SUPPORT) spin = "BACKSPIN";
   else if (motor_up.spin == Brush::NOSPIN)  spin = "NOSPIN";
 
+  // La BACKSPIN: slider1 controleaza motor_down, slider2 controleaza motor_up
+  // → swap m1/m2 in status ca sliderele sa reflecte ce controleaza
+  int m1idx = motor_up.index;
+  int m2idx = motor_down.index;
+  if (motor_up.spin == Brush::SUPPORT) // BACKSPIN cycle
+  {
+    m1idx = motor_down.index;
+    m2idx = motor_up.index;
+  }
+
   String json = "{\"spin\":\"" + spin +
-                "\",\"m1\":" + String(motor_up.index) +
-                ",\"m2\":" + String(motor_down.index) + "}";
+                "\",\"m1\":" + String(m1idx) +
+                ",\"m2\":" + String(m2idx) +
+                ",\"f\":" + String(feeder.index) + "}";
   _server.send(200, "application/json", json);
 }
 

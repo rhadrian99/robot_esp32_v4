@@ -106,41 +106,56 @@ class infr_motor: public infrared_template_empty
     
   }
   
-  // motor_up increase speed
+  // V+/V- controls the main-spin motor:
+  //   TOPSPIN cycle (motor_up=TOPSPIN, motor_down=SUPPORT) → motor_up
+  //   BACKSPIN cycle (motor_up=SUPPORT, motor_down=BACKSPIN) → motor_down
+  //   NOSPIN cycle → motor_up (default)
   void virtual _VUP()
   {
-     if (motor_up.spin==Brush::TOPSPIN) motor_up.increase_speed(MOTOR_STEP_SETUP);
-     if (motor_up.spin==Brush::SUPPORT) motor_up.increase_speed(SUPPORT_STEP_SETUP);
-     if (motor_up.spin==Brush::NOSPIN) motor_up.increase_speed(SUPPORT_STEP_SETUP);
-     display.displayImage(IMAGES[10],0.5);
-      
+    if (motor_up.spin == Brush::TOPSPIN)
+      motor_up.increase_speed(MOTOR_STEP_SETUP);
+    else if (motor_down.spin == Brush::BACKSPIN)
+      motor_down.increase_speed(MOTOR_STEP_SETUP);
+    else
+      motor_up.increase_speed(SUPPORT_STEP_SETUP); // NOSPIN
+    display.displayImage(IMAGES[10], 0.5);
   }
 
   void virtual _VDOWN()
   {
-    
-    if (motor_up.spin==Brush::TOPSPIN) motor_up.decrease_speed(MOTOR_STEP_SETUP);
-    if (motor_up.spin==Brush::SUPPORT) motor_up.decrease_speed(SUPPORT_STEP_SETUP);
-    if (motor_up.spin==Brush::NOSPIN) motor_up.decrease_speed(SUPPORT_STEP_SETUP);
-    display.displayImage(IMAGES[8],0.2);
-
+    if (motor_up.spin == Brush::TOPSPIN)
+      motor_up.decrease_speed(MOTOR_STEP_SETUP);
+    else if (motor_down.spin == Brush::BACKSPIN)
+      motor_down.decrease_speed(MOTOR_STEP_SETUP);
+    else
+      motor_up.decrease_speed(SUPPORT_STEP_SETUP); // NOSPIN
+    display.displayImage(IMAGES[8], 0.2);
   }
+
+  // P+/P- controls the support motor (the one not controlled by V+/V-):
+  //   TOPSPIN cycle → motor_down (support)
+  //   BACKSPIN cycle → motor_up (support)
+  //   NOSPIN cycle → motor_down (default)
   void virtual _PUP()
   {
-      if (motor_down.spin==Brush::BACKSPIN) motor_down.increase_speed(MOTOR_STEP_SETUP);
-      if (motor_down.spin==Brush::SUPPORT) motor_down.increase_speed(SUPPORT_STEP_SETUP);
-      if (motor_down.spin==Brush::NOSPIN) motor_down.increase_speed(SUPPORT_STEP_SETUP);
-      display.displayImage(IMAGES[10],0.2);
-
+    if (motor_down.spin == Brush::SUPPORT)
+      motor_down.increase_speed(SUPPORT_STEP_SETUP);
+    else if (motor_up.spin == Brush::SUPPORT)
+      motor_up.increase_speed(SUPPORT_STEP_SETUP);
+    else
+      motor_down.increase_speed(SUPPORT_STEP_SETUP); // NOSPIN
+    display.displayImage(IMAGES[10], 0.2);
   }
 
   void virtual _PDOWN()
   {
-    if (motor_down.spin==Brush::BACKSPIN) motor_down.decrease_speed(MOTOR_STEP_SETUP);
-    if (motor_down.spin==Brush::SUPPORT) motor_down.decrease_speed(SUPPORT_STEP_SETUP);
-    if (motor_down.spin==Brush::NOSPIN) motor_down.decrease_speed(SUPPORT_STEP_SETUP);
-    display.displayImage(IMAGES[8],0.2);
-
+    if (motor_down.spin == Brush::SUPPORT)
+      motor_down.decrease_speed(SUPPORT_STEP_SETUP);
+    else if (motor_up.spin == Brush::SUPPORT)
+      motor_up.decrease_speed(SUPPORT_STEP_SETUP);
+    else
+      motor_down.decrease_speed(SUPPORT_STEP_SETUP); // NOSPIN
+    display.displayImage(IMAGES[8], 0.2);
   }
 
 
