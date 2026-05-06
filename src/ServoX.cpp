@@ -21,7 +21,7 @@ void ServoX::save_pos(uint8_t val)
   if (val<255)
   {
     if (val<10) {_input=30;}
-    if (val>50) {_input=30;}
+    if (val>max_value) {_input=30;}
   }
   else
   {
@@ -44,8 +44,8 @@ void ServoX::load_pos()
   servo_mem.end();
   
      
-  if (init_value<=min_value) {init_value=30;}
-  if (init_value>=max_value) {init_value=30;}
+  if (init_value<min_value) {init_value=30;}
+  if (init_value>max_value) {init_value=30;}
   startMove(init_value);
   
 
@@ -54,16 +54,7 @@ void ServoX::load_pos()
 
 int ServoX::read_pos()
 {
-unsigned long reftime=1000;
-
-unsigned long ref = millis();
-  while ((millis() - ref) < reftime)
-  {
-    if (this->moving==0) {
-      break;}
-  }
-  int anglex=_servo.read();
-  return anglex;
+  return _targetAngle;
 }
 
 // read current stepper position
@@ -80,6 +71,7 @@ void ServoX::init(int _pin, String _name,int _min, int _max)
  // initial angle = 0 
  _servo.write(0);
  moving=0;
+ _targetAngle=0;
  min_value=_min;
  max_value=_max;
  
@@ -147,6 +139,7 @@ void ServoX::startMove(int targetAngle) {
   if (targetAngle > max_value) {
       targetAngle = max_value;
   }
+  _targetAngle = targetAngle;
 
   // Send the target angle to the queue
   if (angleQueue != NULL) {

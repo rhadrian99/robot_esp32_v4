@@ -45,6 +45,7 @@ uint8_t min_value;
 uint8_t max_value;
 String name;
 int moving;
+int _targetAngle;
 
 int read_pos();
 

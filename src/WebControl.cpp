@@ -2,12 +2,15 @@
 #include <common.h>
 #include "Brush.h"
 #include "StepperX.h"
+#include "ServoX.h"
 
 extern void infrared_menu(uint32_t _var, char _mode);
 extern char mode;
 extern Brush motor_up;
 extern Brush motor_down;
 extern StepperX feeder;
+extern ServoX pan;
+extern ServoX tilt;
 
 WebControl *WebControl::_instance = nullptr;
 
@@ -71,6 +74,10 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       <div class="empty"></div>
       <button class="dpad" onclick="cmd('down')">&#9660;</button>
       <div class="empty"></div>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:#aaa;display:flex;flex-direction:column;gap:4px">
+      <span>PAN: <span id="pan-val" style="color:#e94560">-</span>&#176;</span>
+      <span>TILT: <span id="tilt-val" style="color:#e94560">-</span>&#176;</span>
     </div>
   </div>
 
@@ -148,6 +155,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
             f.value=d.f;
             document.getElementById('fval').textContent=d.f;
           }
+          if(d.pan!==undefined) document.getElementById('pan-val').textContent=d.pan;
+          if(d.tilt!==undefined) document.getElementById('tilt-val').textContent=d.tilt;
         }).catch(()=>{});
     }
     setInterval(pollStatus,2000);
@@ -184,6 +193,7 @@ void WebControl::_register_routes()
   _server.on("/motor2", HTTP_GET, _s_motor2);
   _server.on("/feeder", HTTP_GET, _s_feeder);
   _server.on("/status", HTTP_GET, _s_status);
+  _server.onNotFound([this](){ _server.send(404, "text/plain", ""); });
 }
 
 // ── HTTP handlers ─────────────────────────────────────────────────────────────
@@ -315,7 +325,9 @@ void WebControl::_handle_status()
   String json = "{\"spin\":\"" + spin +
                 "\",\"m1\":" + String(m1idx) +
                 ",\"m2\":" + String(m2idx) +
-                ",\"f\":" + String(feeder.index) + "}";
+                ",\"f\":" + String(feeder.index) +
+                ",\"pan\":" + String(pan.read_pos()) +
+                ",\"tilt\":" + String(tilt.read_pos()) + "}";
   _server.send(200, "application/json", json);
 }
 

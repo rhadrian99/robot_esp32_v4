@@ -46,6 +46,9 @@ void receive_ir()
     uint32_t receive_value = irrecv.decodedIRData.decodedRawData;
     irrecv.resume(); // always resume first
 
+    // Ignora coduri cu protocol UNKNOWN — zgomot EMI de la WiFi
+    if (irrecv.decodedIRData.protocol == UNKNOWN) { irrecv.resume(); return; }
+
     if (receive_value > 0)
     {
       unsigned long now = millis();
@@ -105,6 +108,7 @@ void setup()
   // feeder.init_pins(); // DO NOT CALL: pinMode() on step pin breaks FAS RMT/MCPWM GPIO routing
   feeder.load_timeout_const(); // NVS now initialized — safe to load
 
+  motor_up.check_data(false);   // ensure NVS defaults exist for next boot
   motor_down.check_data(false); // ensure NVS defaults exist for next boot
 
 #define ROBOT_IRINEL 0
