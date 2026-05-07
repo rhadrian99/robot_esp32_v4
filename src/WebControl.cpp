@@ -3,6 +3,7 @@
 #include "Brush.h"
 #include "StepperX.h"
 #include "ServoX.h"
+#include "LEDdisplay.h"
 
 extern void infrared_menu(uint32_t _var, char _mode);
 extern char mode;
@@ -11,6 +12,7 @@ extern Brush motor_down;
 extern StepperX feeder;
 extern ServoX pan;
 extern ServoX tilt;
+extern LEDdisplay display;
 
 WebControl *WebControl::_instance = nullptr;
 
@@ -268,6 +270,7 @@ void WebControl::_handle_motor1()
       feeder.index = 0;
       feeder.stop();
     }
+    display.status(motor_up.index, motor_down.index, feeder.index);
   }
   _server.send(200, "text/plain", "M1 OK");
 }
@@ -293,6 +296,7 @@ void WebControl::_handle_motor2()
       feeder.index = 0;
       feeder.stop();
     }
+    display.status(motor_up.index, motor_down.index, feeder.index);
   }
   _server.send(200, "text/plain", "M2 OK");
 }
@@ -315,6 +319,7 @@ void WebControl::_handle_feeder()
       feeder.stop();
     else
       feeder.start();
+    display.status(motor_up.index, motor_down.index, feeder.index);
   }
   _server.send(200, "text/plain", "F OK");
 }
