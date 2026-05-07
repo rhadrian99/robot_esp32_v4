@@ -486,6 +486,7 @@ public:
       motor_up.increase_speed();
       motor_down.increase_speed();
     }
+    
     show_display_status();
   }
 

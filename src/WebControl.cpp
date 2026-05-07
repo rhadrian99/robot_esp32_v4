@@ -76,8 +76,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       <div class="empty"></div>
     </div>
     <div style="margin-top:10px;font-size:12px;color:#aaa;display:flex;flex-direction:column;gap:4px">
-      <span>PAN: <span id="pan-val" style="color:#e94560">-</span>&#176;</span>
-      <span>TILT: <span id="tilt-val" style="color:#e94560">-</span>&#176;</span>
+      <span>PAN: <span id="pan-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="pan-min">-</span>..<span id="pan-max">-</span>]</span></span>
+      <span>TILT: <span id="tilt-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="tilt-min">-</span>..<span id="tilt-max">-</span>]</span></span>
     </div>
   </div>
 
@@ -156,10 +156,14 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
             document.getElementById('fval').textContent=d.f;
           }
           if(d.pan!==undefined) document.getElementById('pan-val').textContent=d.pan;
+          if(d.pan_min!==undefined) document.getElementById('pan-min').textContent=d.pan_min;
+          if(d.pan_max!==undefined) document.getElementById('pan-max').textContent=d.pan_max;
           if(d.tilt!==undefined) document.getElementById('tilt-val').textContent=d.tilt;
+          if(d.tilt_min!==undefined) document.getElementById('tilt-min').textContent=d.tilt_min;
+          if(d.tilt_max!==undefined) document.getElementById('tilt-max').textContent=d.tilt_max;
         }).catch(()=>{});
     }
-    setInterval(pollStatus,2000);
+    setInterval(pollStatus,500);
     pollStatus();
   </script>
 </body>
@@ -246,19 +250,24 @@ void WebControl::_handle_motor1()
     int v = _server.arg("v").toInt();
     if (v < 0) v = 0;
     if (v > 8) v = 8;
-    // Slider 1 = motorul de spin principal
-    // TOPSPIN: motor_up=TOPSPIN  → slider1 → motor_up
-    // BACKSPIN: motor_down=BACKSPIN → slider1 → motor_down
-    // NOSPIN: ambele sincronizat
-    if (motor_down.spin == Brush::BACKSPIN)
+    // M1 = main motor (_VUP/_VDOWN logic)
+    // TOPSPIN: motor_up = main
+    // BACKSPIN (motor_up=SUPPORT): motor_down = main
+    // NOSPIN: both synchronized
+    if (motor_up.spin == Brush::TOPSPIN)
+      motor_up.set_speed((uint8_t)v);
+    else if (motor_up.spin == Brush::SUPPORT)
       motor_down.set_speed((uint8_t)v);
-    else if (motor_up.spin == Brush::NOSPIN)
+    else
     {
       motor_up.set_speed((uint8_t)v);
       motor_down.set_speed((uint8_t)v);
     }
-    else
-      motor_up.set_speed((uint8_t)v); // TOPSPIN
+    if (motor_up.index == 0 && motor_down.index == 0)
+    {
+      feeder.index = 0;
+      feeder.stop();
+    }
   }
   _server.send(200, "text/plain", "M1 OK");
 }
@@ -270,14 +279,20 @@ void WebControl::_handle_motor2()
     int v = _server.arg("v").toInt();
     if (v < 0) v = 0;
     if (v > 8) v = 8;
-    // Slider 2 = motorul de support
-    // TOPSPIN: motor_down=SUPPORT → slider2 → motor_down
-    // BACKSPIN: motor_up=SUPPORT  → slider2 → motor_up
-    // NOSPIN: motor_down (sau ignorat, deja sincronizat de slider1)
-    if (motor_up.spin == Brush::SUPPORT)
-      motor_up.set_speed((uint8_t)v);
-    else
+    // M2 = support motor (_PUP/_PDOWN logic)
+    // TOPSPIN: motor_down = support
+    // BACKSPIN (motor_up=SUPPORT): motor_up = support
+    // NOSPIN: inactive
+    if (motor_up.spin == Brush::TOPSPIN)
       motor_down.set_speed((uint8_t)v);
+    else if (motor_up.spin == Brush::SUPPORT)
+      motor_up.set_speed((uint8_t)v);
+    // NOSPIN: P slider inactive, do nothing
+    if (motor_up.index == 0 && motor_down.index == 0)
+    {
+      feeder.index = 0;
+      feeder.stop();
+    }
   }
   _server.send(200, "text/plain", "M2 OK");
 }
@@ -327,7 +342,11 @@ void WebControl::_handle_status()
                 ",\"m2\":" + String(m2idx) +
                 ",\"f\":" + String(feeder.index) +
                 ",\"pan\":" + String(pan.read_pos()) +
-                ",\"tilt\":" + String(tilt.read_pos()) + "}";
+                ",\"pan_min\":" + String(pan.min_value) +
+                ",\"pan_max\":" + String(pan.max_value) +
+                ",\"tilt\":" + String(tilt.read_pos()) +
+                ",\"tilt_min\":" + String(tilt.min_value) +
+                ",\"tilt_max\":" + String(tilt.max_value) + "}";
   _server.send(200, "application/json", json);
 }
 
