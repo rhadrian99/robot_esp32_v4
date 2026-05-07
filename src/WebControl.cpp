@@ -48,10 +48,13 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           cursor:pointer;box-shadow:0 4px 8px #0005}
     .dpad:active{transform:scale(.92);background:#e94560;color:#fff}
     .empty{background:transparent;box-shadow:none;pointer-events:none}
-    .slider-wrap{display:flex;flex-direction:column;gap:12px}
+    .slider-wrap{display:flex;flex-direction:column;gap:22px}
     .slider-item label{font-size:12px;color:#aaa;
-                       display:flex;justify-content:space-between;margin-bottom:4px}
-    .slider-item input[type=range]{width:100%;accent-color:#e94560;height:6px}
+                       display:flex;justify-content:space-between;margin-bottom:6px}
+    .slider-item input[type=range]{width:100%;accent-color:#e94560;height:24px;cursor:pointer}
+    .slider-item input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:#0f3460}
+    .slider-item input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:#0f3460}
+    .slider-item input[type=range]::-webkit-slider-thumb{margin-top:-4px}
     #status{font-size:12px;color:#555}
   </style>
 </head>
