@@ -128,6 +128,7 @@ void setup()
   {
     pan.init(PAN, F("PAN"), 0, 40);
   }
+  pan.load_limits(); // override min/max from NVS (default 5, 50)
   pan.load_pos();
   if (ROBOT_IRINEL)
   {
@@ -141,6 +142,7 @@ void setup()
   {
     tilt.init(TILT, F("TILT"), 0, 40);
   } // new join mechanism
+  tilt.load_limits(); // override min/max from NVS (default 5, 50)
   tilt.load_pos();
 
   BrushTimer.attach_ms(50, update_motors);

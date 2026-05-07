@@ -37,6 +37,22 @@ void ServoX::save_pos(uint8_t val)
   servo_mem.end();
 }
 
+void ServoX::save_limits()
+{
+  servo_mem.begin(name.c_str(), false);
+  servo_mem.putUInt("min", min_value);
+  servo_mem.putUInt("max", max_value);
+  servo_mem.end();
+}
+
+void ServoX::load_limits(uint8_t default_min, uint8_t default_max)
+{
+  servo_mem.begin(name.c_str(), false);
+  min_value = (uint8_t)servo_mem.getUInt("min", default_min);
+  max_value = (uint8_t)servo_mem.getUInt("max", default_max);
+  servo_mem.end();
+}
+
 void ServoX::load_pos()
 {
   servo_mem.begin(name.c_str(),false);

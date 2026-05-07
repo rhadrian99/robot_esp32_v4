@@ -51,6 +51,8 @@ int read_pos();
 
 void load_pos();
 void save_pos(uint8_t val);
+void save_limits();
+void load_limits(uint8_t default_min = 5, uint8_t default_max = 50);
 
 
 

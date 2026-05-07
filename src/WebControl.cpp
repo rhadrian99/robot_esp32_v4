@@ -119,6 +119,13 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div id="status">ready</div>
 
+  <a href="/settings" style="display:block;width:100%;max-width:320px;text-decoration:none">
+    <button style="width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+                   font-size:14px;padding:12px;cursor:pointer;font-weight:bold">
+      &#9881; Settings
+    </button>
+  </a>
+
   <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:#0008;z-index:999;align-items:center;justify-content:center">
     <div style="background:#16213e;border-radius:14px;padding:24px 20px;max-width:280px;width:90%;text-align:center">
       <p style="margin-bottom:20px;font-size:14px;line-height:1.5">Salvezi pozitia curenta PAN/TILT ca pozitie HOME?</p>
@@ -217,6 +224,96 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 )rawhtml";
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Settings page ─────────────────────────────────────────────────────────────
+static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;background:#1a1a2e;color:#eee;
+         display:flex;flex-direction:column;align-items:center;
+         padding:16px;gap:14px;min-height:100vh}
+    h2{letter-spacing:2px;font-size:18px}
+    .card{background:#16213e;border-radius:14px;padding:14px;
+          width:100%;max-width:320px}
+    .sect{font-size:13px;color:#e94560;font-weight:bold;margin-bottom:10px}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+    .field label{font-size:12px;color:#aaa}
+    .field input{background:#0f3460;border:none;border-radius:8px;
+                 color:#e94560;font-size:22px;padding:10px 14px;
+                 width:100%;text-align:center;font-weight:bold}
+    .btn{width:100%;border:none;border-radius:10px;cursor:pointer;
+         font-size:16px;color:#eee;padding:13px;margin-top:6px;font-weight:bold}
+    .btn-save{background:#e94560}
+    .btn-back{background:#0f3460;color:#aaa}
+    #status{font-size:12px;color:#555}
+  </style>
+</head>
+<body>
+  <h2>&#9881; Settings</h2>
+
+  <div class="card">
+    <div class="sect">PAN limits</div>
+    <div class="field">
+      <label>MIN (grade)</label>
+      <input type="number" id="pan_min" min="0" max="90" value="5">
+    </div>
+    <div class="field">
+      <label>MAX (grade)</label>
+      <input type="number" id="pan_max" min="0" max="90" value="50">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sect">TILT limits</div>
+    <div class="field">
+      <label>MIN (grade)</label>
+      <input type="number" id="tilt_min" min="0" max="90" value="5">
+    </div>
+    <div class="field">
+      <label>MAX (grade)</label>
+      <input type="number" id="tilt_max" min="0" max="90" value="50">
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn btn-save" onclick="saveLimits()">&#128190; Salveaza</button>
+    <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
+  </div>
+
+  <div id="status">Se incarca...</div>
+
+  <script>
+    fetch('/status')
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.pan_min!==undefined) document.getElementById('pan_min').value=d.pan_min;
+        if(d.pan_max!==undefined) document.getElementById('pan_max').value=d.pan_max;
+        if(d.tilt_min!==undefined) document.getElementById('tilt_min').value=d.tilt_min;
+        if(d.tilt_max!==undefined) document.getElementById('tilt_max').value=d.tilt_max;
+        document.getElementById('status').textContent='ready';
+      }).catch(()=>{document.getElementById('status').textContent='error loading';});
+
+    function saveLimits(){
+      var pm=document.getElementById('pan_min').value;
+      var pM=document.getElementById('pan_max').value;
+      var tm=document.getElementById('tilt_min').value;
+      var tM=document.getElementById('tilt_max').value;
+      fetch('/setlimits?pan_min='+pm+'&pan_max='+pM+'&tilt_min='+tm+'&tilt_max='+tM)
+        .then(r=>r.text())
+        .then(t=>{document.getElementById('status').textContent=t;})
+        .catch(()=>{document.getElementById('status').textContent='error';});
+    }
+  </script>
+</body>
+</html>
+)rawhtml";
+// ─────────────────────────────────────────────────────────────────────────────
+
 WebControl::WebControl() : _server(80)
 {
   _instance = this;
@@ -245,6 +342,8 @@ void WebControl::_register_routes()
   _server.on("/savepos",    HTTP_GET, _s_savepos);
   _server.on("/status",     HTTP_GET, _s_status);
   _server.on("/step",       HTTP_GET, _s_step);
+  _server.on("/settings",   HTTP_GET, _s_settings);
+  _server.on("/setlimits",  HTTP_GET, _s_setlimits);
   _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
   _server.onNotFound([this](){ _server.send(404, "text/plain", ""); });
 }
@@ -299,6 +398,22 @@ void WebControl::_handle_step()
   else servo_step = 4;
   String json = "{\"step\":" + String(servo_step) + "}";
   _server.send(200, "application/json", json);
+}
+
+void WebControl::_handle_settings()
+{
+  _server.send_P(200, "text/html", SETTINGS_PAGE);
+}
+
+void WebControl::_handle_setlimits()
+{
+  if (_server.hasArg("pan_min"))  pan.min_value  = (uint8_t)constrain(_server.arg("pan_min").toInt(),  0, 90);
+  if (_server.hasArg("pan_max"))  pan.max_value  = (uint8_t)constrain(_server.arg("pan_max").toInt(),  0, 90);
+  if (_server.hasArg("tilt_min")) tilt.min_value = (uint8_t)constrain(_server.arg("tilt_min").toInt(), 0, 90);
+  if (_server.hasArg("tilt_max")) tilt.max_value = (uint8_t)constrain(_server.arg("tilt_max").toInt(), 0, 90);
+  pan.save_limits();
+  tilt.save_limits();
+  _server.send(200, "text/plain", "Limits saved");
 }
 
 void WebControl::_handle_motor1()
