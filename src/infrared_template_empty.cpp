@@ -156,8 +156,8 @@ void infrared_template_empty::menu(uint32_t _var)
     const char* name = ir_code_name(_var);
     if (name)
       Serial.printf(" -> %s\n", name);
-    else
-      Serial.printf(" -> NOT DEFINED (0x%08X)\n", _var);
+    //else
+    //  Serial.printf(" -> NOT DEFINED (0x%08X)\n", _var);
 
     switch (_var)
     {

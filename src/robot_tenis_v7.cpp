@@ -66,7 +66,7 @@ void receive_ir()
       {
         last_ir_value = receive_value;
         last_ir_time = now;
-        DEBUG(F("IR value: "), receive_value, false);
+        //DEBUG(F("IR value: "), receive_value, false);
         infrared_menu(receive_value, mode);
       }
     }
