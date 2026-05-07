@@ -19,7 +19,6 @@ FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *_stepper = NULL;
 Preferences stepper_mem;
 
-//ESP_FlexyStepper _stepper;
 
 unsigned long timer_stepper;
 uint8_t _stepPin;

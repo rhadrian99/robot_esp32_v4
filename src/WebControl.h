@@ -36,6 +36,7 @@ private:
   void _handle_motor1();
   void _handle_motor2();
   void _handle_feeder();
+  void _handle_savepos();
   void _handle_status();
 
   // FreeRTOS task
@@ -50,10 +51,11 @@ private:
   static void _s_right()  { _instance->_handle_right(); }
   static void _s_power()  { _instance->_handle_power(); }
   static void _s_mute()   { _instance->_handle_mute(); }
-  static void _s_motor1() { _instance->_handle_motor1(); }
-  static void _s_motor2() { _instance->_handle_motor2(); }
-  static void _s_feeder() { _instance->_handle_feeder(); }
-  static void _s_status() { _instance->_handle_status(); }
+  static void _s_motor1()   { _instance->_handle_motor1(); }
+  static void _s_motor2()   { _instance->_handle_motor2(); }
+  static void _s_feeder()   { _instance->_handle_feeder(); }
+  static void _s_savepos()  { _instance->_handle_savepos(); }
+  static void _s_status()   { _instance->_handle_status(); }
 };
 
 #endif

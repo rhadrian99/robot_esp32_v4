@@ -263,7 +263,6 @@ void infrared_template_empty::menu(uint32_t _var)
   void infrared_template_empty:: _TReset()
   {
    
-
     display.show_char('R',1);
     execute=false;
     stop_feeder();

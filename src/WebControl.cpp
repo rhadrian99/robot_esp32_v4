@@ -80,9 +80,12 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       <button class="dpad" onclick="cmd('down')">&#9660;</button>
       <div class="empty"></div>
     </div>
-    <div style="margin-top:10px;font-size:12px;color:#aaa;display:flex;flex-direction:column;gap:4px">
-      <span>PAN: <span id="pan-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="pan-min">-</span>..<span id="pan-max">-</span>]</span></span>
-      <span>TILT: <span id="tilt-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="tilt-min">-</span>..<span id="tilt-max">-</span>]</span></span>
+    <div style="margin-top:10px;font-size:12px;color:#aaa;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+        <span>PAN: <span id="pan-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="pan-min">-</span>..<span id="pan-max">-</span>]</span></span>
+        <span>TILT: <span id="tilt-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="tilt-min">-</span>..<span id="tilt-max">-</span>]</span></span>
+      </div>
+      <button onclick="confirmSavePos()" style="border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:11px;padding:14px 8px;cursor:pointer;white-space:nowrap">&#128190; home</button>
     </div>
   </div>
 
@@ -112,6 +115,16 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div id="status">ready</div>
 
+  <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:#0008;z-index:999;align-items:center;justify-content:center">
+    <div style="background:#16213e;border-radius:14px;padding:24px 20px;max-width:280px;width:90%;text-align:center">
+      <p style="margin-bottom:20px;font-size:14px;line-height:1.5">Salvezi pozitia curenta PAN/TILT ca pozitie HOME?</p>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button onclick="modalOk()" style="border:none;border-radius:8px;background:#e94560;color:#fff;font-size:14px;padding:10px 24px;cursor:pointer">Da</button>
+        <button onclick="modalCancel()" style="border:none;border-radius:8px;background:#0f3460;color:#eee;font-size:14px;padding:10px 24px;cursor:pointer">Nu</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function cmd(dir){
       document.getElementById('status').textContent=dir+'...';
@@ -122,6 +135,23 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     }
     function setMotor(n,v){
       fetch('/motor'+n+'?v='+v)
+        .then(r=>r.text())
+        .then(t=>document.getElementById('status').textContent=t)
+        .catch(()=>document.getElementById('status').textContent='error');
+    }
+    function confirmSavePos(){
+      var m=document.getElementById('confirm-modal');
+      m.style.display='flex';
+    }
+    function modalOk(){
+      document.getElementById('confirm-modal').style.display='none';
+      savePos();
+    }
+    function modalCancel(){
+      document.getElementById('confirm-modal').style.display='none';
+    }
+    function savePos(){
+      fetch('/savepos')
         .then(r=>r.text())
         .then(t=>document.getElementById('status').textContent=t)
         .catch(()=>document.getElementById('status').textContent='error');
@@ -198,10 +228,12 @@ void WebControl::_register_routes()
   _server.on("/right",  HTTP_GET, _s_right);
   _server.on("/power",  HTTP_GET, _s_power);
   _server.on("/mute",   HTTP_GET, _s_mute);
-  _server.on("/motor1", HTTP_GET, _s_motor1);
-  _server.on("/motor2", HTTP_GET, _s_motor2);
-  _server.on("/feeder", HTTP_GET, _s_feeder);
-  _server.on("/status", HTTP_GET, _s_status);
+  _server.on("/motor1",   HTTP_GET, _s_motor1);
+  _server.on("/motor2",   HTTP_GET, _s_motor2);
+  _server.on("/feeder",   HTTP_GET, _s_feeder);
+  _server.on("/savepos",    HTTP_GET, _s_savepos);
+  _server.on("/status",     HTTP_GET, _s_status);
+  _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
   _server.onNotFound([this](){ _server.send(404, "text/plain", ""); });
 }
 
@@ -325,6 +357,13 @@ void WebControl::_handle_feeder()
     display.status(motor_up.index, motor_down.index, feeder.index);
   }
   _server.send(200, "text/plain", "F OK");
+}
+
+void WebControl::_handle_savepos()
+{
+  pan.save_pos((uint8_t)pan.read_pos());
+  tilt.save_pos((uint8_t)tilt.read_pos());
+  _server.send(200, "text/plain", "POS SAVED");
 }
 
 void WebControl::_handle_status()
