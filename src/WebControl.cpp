@@ -78,18 +78,19 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       <button class="dpad" onclick="cmd('up')">&#9650;</button>
       <div class="empty"></div>
       <button class="dpad" onclick="cmd('left')">&#9664;</button>
-      <div class="empty"></div>
+      <button class="dpad" onclick="confirmSavePos()" style="font-size:24px">&#127968;</button>
       <button class="dpad" onclick="cmd('right')">&#9654;</button>
-      <div class="empty"></div>
-      <button class="dpad" onclick="cmd('down')">&#9660;</button>
-      <div class="empty"></div>
-    </div>
-    <div style="margin-top:10px;font-size:12px;color:#aaa;display:flex;align-items:center;gap:8px">
-      <div style="flex:1;display:flex;flex-direction:column;gap:4px">
-        <span>PAN: <span id="pan-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="pan-min">-</span>..<span id="pan-max">-</span>]</span></span>
-        <span>TILT: <span id="tilt-val" style="color:#e94560">-</span>&#176; <span style="color:#666;font-size:11px">[<span id="tilt-min">-</span>..<span id="tilt-max">-</span>]</span></span>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;width:72px;height:72px">
+        <span style="font-size:10px;color:#aaa">PAN</span>
+        <span id="pan-val" style="font-size:18px;color:#e94560;font-weight:bold">-</span>
+        <span style="font-size:9px;color:#555">[<span id="pan-min">-</span>..<span id="pan-max">-</span>]</span>
       </div>
-      <button onclick="confirmSavePos()" style="border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:11px;padding:14px 8px;cursor:pointer;white-space:nowrap">&#128190; home</button>
+      <button class="dpad" onclick="cmd('down')">&#9660;</button>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;width:72px;height:72px">
+        <span style="font-size:10px;color:#aaa">TILT</span>
+        <span id="tilt-val" style="font-size:18px;color:#e94560;font-weight:bold">-</span>
+        <span style="font-size:9px;color:#555">[<span id="tilt-min">-</span>..<span id="tilt-max">-</span>]</span>
+      </div>
     </div>
   </div>
 
@@ -236,76 +237,124 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:sans-serif;background:#1a1a2e;color:#eee;
          display:flex;flex-direction:column;align-items:center;
-         padding:16px;gap:14px;min-height:100vh}
-    h2{letter-spacing:2px;font-size:18px}
-    .card{background:#16213e;border-radius:14px;padding:14px;
-          width:100%;max-width:320px}
-    .sect{font-size:13px;color:#e94560;font-weight:bold;margin-bottom:10px}
-    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-    .field label{font-size:12px;color:#aaa}
-    .field input{background:#0f3460;border:none;border-radius:8px;
-                 color:#e94560;font-size:22px;padding:10px 14px;
-                 width:100%;text-align:center;font-weight:bold}
+         padding:20px;gap:16px;min-height:100vh}
+    h2{letter-spacing:2px;font-size:18px;margin-bottom:4px}
+    .card{background:#16213e;border-radius:14px;padding:16px 20px;
+          width:100%;max-width:340px}
+    .grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:center}
+    .col-hdr{font-size:11px;color:#aaa;text-align:center;padding-bottom:2px}
+    .row-lbl{font-size:13px;color:#e94560;font-weight:bold;padding-right:8px}
+    .grid input{background:#0f3460;border:none;border-radius:8px;
+                color:#eee;font-size:20px;padding:10px 6px;
+                width:100%;text-align:center;font-weight:bold}
     .btn{width:100%;border:none;border-radius:10px;cursor:pointer;
-         font-size:16px;color:#eee;padding:13px;margin-top:6px;font-weight:bold}
+         font-size:16px;color:#eee;padding:13px;font-weight:bold}
     .btn-save{background:#e94560}
-    .btn-back{background:#0f3460;color:#aaa}
+    .btn-back{background:#0f3460;color:#aaa;margin-top:8px}
     #status{font-size:12px;color:#555}
+    /* confirm modal */
+    #modal{display:none;position:fixed;inset:0;background:#0008;
+           z-index:999;align-items:center;justify-content:center}
+    #modal.show{display:flex}
+    .modal-box{background:#16213e;border-radius:14px;padding:24px 20px;
+               max-width:280px;width:90%;text-align:center}
+    .modal-box p{margin-bottom:20px;font-size:14px;line-height:1.5}
+    .modal-btns{display:flex;gap:10px}
+    .modal-btns button{flex:1;border:none;border-radius:10px;padding:12px;
+                       font-size:15px;font-weight:bold;cursor:pointer}
+    .btn-ok{background:#e94560;color:#eee}
+    .btn-cancel{background:#0f3460;color:#aaa}
   </style>
 </head>
 <body>
   <h2>&#9881; Settings</h2>
 
   <div class="card">
-    <div class="sect">PAN limits</div>
-    <div class="field">
-      <label>MIN (grade)</label>
-      <input type="number" id="pan_min" min="0" max="90" value="5">
-    </div>
-    <div class="field">
-      <label>MAX (grade)</label>
-      <input type="number" id="pan_max" min="0" max="90" value="50">
-    </div>
-  </div>
+    <div class="grid">
+      <div></div>
+      <div class="col-hdr">min</div>
+      <div class="col-hdr">max</div>
 
-  <div class="card">
-    <div class="sect">TILT limits</div>
-    <div class="field">
-      <label>MIN (grade)</label>
+      <div class="row-lbl">pan</div>
+      <input type="number" id="pan_min" min="0" max="90" value="5">
+      <input type="number" id="pan_max" min="0" max="90" value="50">
+
+      <div class="row-lbl">tilt</div>
       <input type="number" id="tilt_min" min="0" max="90" value="5">
-    </div>
-    <div class="field">
-      <label>MAX (grade)</label>
       <input type="number" id="tilt_max" min="0" max="90" value="50">
     </div>
   </div>
 
-  <div class="card">
-    <button class="btn btn-save" onclick="saveLimits()">&#128190; Salveaza</button>
+  <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-save" onclick="confirmSave()">&#128190; Salveaza</button>
     <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
   </div>
 
   <div id="status">Se incarca...</div>
 
+  <!-- confirm modal -->
+  <div id="modal">
+    <div class="modal-box">
+      <p>Salvezi limitele PAN/TILT?</p>
+      <div class="modal-btns">
+        <button class="btn-ok" onclick="doSave()">OK</button>
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    var saved={pan_min:5,pan_max:50,tilt_min:5,tilt_max:50};
+
+    function applyValues(v){
+      document.getElementById('pan_min').value=v.pan_min;
+      document.getElementById('pan_max').value=v.pan_max;
+      document.getElementById('tilt_min').value=v.tilt_min;
+      document.getElementById('tilt_max').value=v.tilt_max;
+    }
+
     fetch('/status')
       .then(r=>r.json())
       .then(d=>{
-        if(d.pan_min!==undefined) document.getElementById('pan_min').value=d.pan_min;
-        if(d.pan_max!==undefined) document.getElementById('pan_max').value=d.pan_max;
-        if(d.tilt_min!==undefined) document.getElementById('tilt_min').value=d.tilt_min;
-        if(d.tilt_max!==undefined) document.getElementById('tilt_max').value=d.tilt_max;
+        if(d.pan_min!==undefined)  saved.pan_min=d.pan_min;
+        if(d.pan_max!==undefined)  saved.pan_max=d.pan_max;
+        if(d.tilt_min!==undefined) saved.tilt_min=d.tilt_min;
+        if(d.tilt_max!==undefined) saved.tilt_max=d.tilt_max;
+        applyValues(saved);
         document.getElementById('status').textContent='ready';
       }).catch(()=>{document.getElementById('status').textContent='error loading';});
 
-    function saveLimits(){
-      var pm=document.getElementById('pan_min').value;
-      var pM=document.getElementById('pan_max').value;
-      var tm=document.getElementById('tilt_min').value;
-      var tM=document.getElementById('tilt_max').value;
+    function confirmSave(){
+      var pm=parseInt(document.getElementById('pan_min').value);
+      var pM=parseInt(document.getElementById('pan_max').value);
+      var tm=parseInt(document.getElementById('tilt_min').value);
+      var tM=parseInt(document.getElementById('tilt_max').value);
+      var err='';
+      if(pm<=0||tm<=0)         err='min trebuie sa fie > 0';
+      else if(pM>=60||tM>=60)  err='max trebuie sa fie < 60';
+      else if(pm>=pM)          err='PAN: min trebuie sa fie < max';
+      else if(tm>=tM)          err='TILT: min trebuie sa fie < max';
+      if(err){
+        document.getElementById('status').textContent='\u26a0 '+err;
+        applyValues(saved);
+        return;
+      }
+      document.getElementById('modal').classList.add('show');
+    }
+    function closeModal()  { document.getElementById('modal').classList.remove('show'); }
+
+    function doSave(){
+      closeModal();
+      var pm=parseInt(document.getElementById('pan_min').value);
+      var pM=parseInt(document.getElementById('pan_max').value);
+      var tm=parseInt(document.getElementById('tilt_min').value);
+      var tM=parseInt(document.getElementById('tilt_max').value);
       fetch('/setlimits?pan_min='+pm+'&pan_max='+pM+'&tilt_min='+tm+'&tilt_max='+tM)
         .then(r=>r.text())
-        .then(t=>{document.getElementById('status').textContent=t;})
+        .then(t=>{
+          saved={pan_min:pm,pan_max:pM,tilt_min:tm,tilt_max:tM};
+          document.getElementById('status').textContent=t;
+        })
         .catch(()=>{document.getElementById('status').textContent='error';});
     }
   </script>
@@ -407,10 +456,20 @@ void WebControl::_handle_settings()
 
 void WebControl::_handle_setlimits()
 {
-  if (_server.hasArg("pan_min"))  pan.min_value  = (uint8_t)constrain(_server.arg("pan_min").toInt(),  0, 90);
-  if (_server.hasArg("pan_max"))  pan.max_value  = (uint8_t)constrain(_server.arg("pan_max").toInt(),  0, 90);
-  if (_server.hasArg("tilt_min")) tilt.min_value = (uint8_t)constrain(_server.arg("tilt_min").toInt(), 0, 90);
-  if (_server.hasArg("tilt_max")) tilt.max_value = (uint8_t)constrain(_server.arg("tilt_max").toInt(), 0, 90);
+  int pan_min  = _server.hasArg("pan_min")  ? _server.arg("pan_min").toInt()  : (int)pan.min_value;
+  int pan_max  = _server.hasArg("pan_max")  ? _server.arg("pan_max").toInt()  : (int)pan.max_value;
+  int tilt_min = _server.hasArg("tilt_min") ? _server.arg("tilt_min").toInt() : (int)tilt.min_value;
+  int tilt_max = _server.hasArg("tilt_max") ? _server.arg("tilt_max").toInt() : (int)tilt.max_value;
+
+  if (pan_min <= 0 || tilt_min <= 0)        { _server.send(400, "text/plain", "min trebuie sa fie > 0"); return; }
+  if (pan_max >= 60 || tilt_max >= 60)      { _server.send(400, "text/plain", "max trebuie sa fie < 60"); return; }
+  if (pan_min >= pan_max)                   { _server.send(400, "text/plain", "PAN: min trebuie sa fie < max"); return; }
+  if (tilt_min >= tilt_max)                 { _server.send(400, "text/plain", "TILT: min trebuie sa fie < max"); return; }
+
+  pan.min_value  = (uint8_t)pan_min;
+  pan.max_value  = (uint8_t)pan_max;
+  tilt.min_value = (uint8_t)tilt_min;
+  tilt.max_value = (uint8_t)tilt_max;
   pan.save_limits();
   tilt.save_limits();
   _server.send(200, "text/plain", "Limits saved");
