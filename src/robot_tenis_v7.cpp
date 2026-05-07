@@ -10,6 +10,7 @@ using namespace std;
 #define MINOR_VERSION 1 //
 
 char mode = 'N'; // initial normal program
+uint8_t servo_step = 6; // degrees per arrow press (toggleable 4/6/8 via web)
 
 #include <infrared.h>
 Ticker BrushTimer;

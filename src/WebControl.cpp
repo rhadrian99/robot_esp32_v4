@@ -7,6 +7,7 @@
 
 extern void infrared_menu(uint32_t _var, char _mode);
 extern char mode;
+extern uint8_t servo_step;
 extern Brush motor_up;
 extern Brush motor_down;
 extern StepperX feeder;
@@ -69,6 +70,9 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <div class="card">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+      <button id="btn-step" onclick="toggleStep()" style="border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">6&#176;</button>
+    </div>
     <div class="grid">
       <div class="empty"></div>
       <button class="dpad" onclick="cmd('up')">&#9650;</button>
@@ -126,6 +130,12 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <script>
+    function toggleStep(){
+      fetch('/step')
+        .then(r=>r.json())
+        .then(d=>document.getElementById('btn-step').textContent=d.step+'\u00b0')
+        .catch(()=>{});
+    }
     function cmd(dir){
       document.getElementById('status').textContent=dir+'...';
       fetch('/'+dir)
@@ -196,6 +206,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           if(d.tilt!==undefined) document.getElementById('tilt-val').textContent=d.tilt;
           if(d.tilt_min!==undefined) document.getElementById('tilt-min').textContent=d.tilt_min;
           if(d.tilt_max!==undefined) document.getElementById('tilt-max').textContent=d.tilt_max;
+          if(d.step!==undefined) document.getElementById('btn-step').textContent=d.step+'\u00b0';
         }).catch(()=>{});
     }
     setInterval(pollStatus,500);
@@ -233,6 +244,7 @@ void WebControl::_register_routes()
   _server.on("/feeder",   HTTP_GET, _s_feeder);
   _server.on("/savepos",    HTTP_GET, _s_savepos);
   _server.on("/status",     HTTP_GET, _s_status);
+  _server.on("/step",       HTTP_GET, _s_step);
   _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
   _server.onNotFound([this](){ _server.send(404, "text/plain", ""); });
 }
@@ -278,6 +290,15 @@ void WebControl::_handle_mute()
 {
   infrared_menu(hMute, mode);
   _server.send(200, "text/plain", "MUTE OK");
+}
+
+void WebControl::_handle_step()
+{
+  if (servo_step == 4) servo_step = 6;
+  else if (servo_step == 6) servo_step = 8;
+  else servo_step = 4;
+  String json = "{\"step\":" + String(servo_step) + "}";
+  _server.send(200, "application/json", json);
 }
 
 void WebControl::_handle_motor1()
@@ -393,7 +414,8 @@ void WebControl::_handle_status()
                 ",\"pan_max\":" + String(pan.max_value) +
                 ",\"tilt\":" + String(tilt.read_pos()) +
                 ",\"tilt_min\":" + String(tilt.min_value) +
-                ",\"tilt_max\":" + String(tilt.max_value) + "}";
+                ",\"tilt_max\":" + String(tilt.max_value) +
+                ",\"step\":" + String(servo_step) + "}";
   _server.send(200, "application/json", json);
 }
 

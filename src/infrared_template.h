@@ -3,7 +3,8 @@
 
 #include "infrared_template_empty.h" // interface
 #include <Ticker.h>
-#define SERVO_STEP 6 //  degrees to move steper
+extern uint8_t servo_step;
+#define SERVO_STEP servo_step //  degrees to move servo (toggleable 4/6/8 via web)
 
 class infrared_template : public infrared_template_empty
 {

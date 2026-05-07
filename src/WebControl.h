@@ -38,6 +38,7 @@ private:
   void _handle_feeder();
   void _handle_savepos();
   void _handle_status();
+  void _handle_step();
 
   // FreeRTOS task
   static void _task(void *param);
@@ -56,6 +57,7 @@ private:
   static void _s_feeder()   { _instance->_handle_feeder(); }
   static void _s_savepos()  { _instance->_handle_savepos(); }
   static void _s_status()   { _instance->_handle_status(); }
+  static void _s_step()     { _instance->_handle_step(); }
 };
 
 #endif

@@ -13,19 +13,23 @@ extern void tempo_empty(unsigned long reftime);
 #define MOVE_STEP 12
 
 
-// if val = 255 the read current postion
+// if val = 255 use default position (30)
 void ServoX::save_pos(uint8_t val)
 {
-  // memorize to flash the actual position of servo 
-  uint8_t _input  = (byte) _servo.read();
-  if (val<255)
+  // memorize to flash the actual position of servo
+  // Use val directly to avoid rounding errors from _servo.read() roundtrip:
+  // write(angle) -> us -> ticks -> us -> read() can return angle-1 due to integer truncation
+  uint8_t _input;
+  if (val < 255)
   {
-    if (val<10) {_input=30;}
-    if (val>max_value) {_input=30;}
+    if (val < 10 || val > max_value)
+      _input = 30;
+    else
+      _input = val;
   }
   else
   {
-    _input=30;
+    _input = 30;
   }
   servo_mem.begin(name.c_str(),false);
 
@@ -65,7 +69,7 @@ void ServoX::init(int _pin, String _name,int _min, int _max)
  name = _name;
  PIN=_pin;
  //pinMode(PIN, OUTPUT);
- //this->_servo.attach(_pin);
+ //this->_servo.attach(_pin);d
  this->_servo.attach(_pin, 544, 2550);
  delayMs=6;
  // initial angle = 0 
