@@ -15,34 +15,34 @@ class infrared_template_servo: public infrared_template_empty
       val = tilt.read_pos();
       tilt.save_pos(val);
 
-      display.displayImage(IMAGES[12],1); // ok save
+      display.displayImage_async(IMAGES[12],1); // ok save
     }
     
   void _T2() override  // save pan minim
     {
       pan.startMove(pan.min_value);
-      display.displayImage(IMAGES[9],0.5);
-      show_display_status();
+      display.displayImage_async(IMAGES[9],2.0);
+      // NO show_display_status() - avoid conflict with async display
       
     }
   void _T3() override // save pan maxim
     {
       pan.startMove(pan.max_value);
-      display.displayImage(IMAGES[11],0.5);
-      show_display_status();
+      display.displayImage_async(IMAGES[11],2.0);
+      // NO show_display_status() - avoid conflict with async display
     }
 
 void _T5() override
     {
       tilt.startMove(tilt.min_value);
-      display.displayImage(IMAGES[8],0.5);
-      show_display_status();
+      display.displayImage_async(IMAGES[8],2.0);
+      // NO show_display_status() - avoid conflict with async display
     }
   void _T6() override // save tilt max
     {
       tilt.startMove(tilt.max_value);
-      display.displayImage(IMAGES[10],0.5);
-      show_display_status();
+      display.displayImage_async(IMAGES[10],2.0);
+      // NO show_display_status() - avoid conflict with async display
     }
   void _TOK() override
   {
@@ -54,29 +54,29 @@ void _T5() override
   void virtual _TLEFT()
   {
       pan.startMove(pan.read_pos()+SERVO_SETUP_SPEED);
-      display.displayImage(IMAGES[11],0.5);
-      show_display_status();
+      display.displayImage_async(IMAGES[11],1.2);  // Optimized timeout
+      // NO show_display_status() here - avoid conflict with async display
   }
 
   void virtual _TRIGHT()
   {
       pan.startMove(pan.read_pos()-SERVO_SETUP_SPEED);
-      display.displayImage(IMAGES[9],0.5);
-      show_display_status();
+      display.displayImage_async(IMAGES[9],1.2);  // Optimized timeout
+      // NO show_display_status() here - avoid conflict with async display
   }
 
   void virtual _TDOWN()
   {
     tilt.startMove(tilt.read_pos()-SERVO_SETUP_SPEED);
-    display.displayImage(IMAGES[8],0.5);
-    show_display_status();
+    display.displayImage_async(IMAGES[8],1.2);  // Optimized timeout
+    // NO show_display_status() here - avoid conflict with async display
   }
 
   void virtual _TUP()
   {
     tilt.startMove(tilt.read_pos()+SERVO_SETUP_SPEED);
-    display.displayImage(IMAGES[10],0.5);
-    show_display_status();
+    display.displayImage_async(IMAGES[10],1.2);  // Optimized timeout
+    // NO show_display_status() here - avoid conflict with async display
   }
 
   void _TPower() override

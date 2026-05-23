@@ -681,8 +681,8 @@ public:
       return;
     pan.startMove(pan.read_pos() + SERVO_STEP);
     Serial.printf("PAN  pos=%d  min=%d  max=%d\n", pan.read_pos(), pan.min_value, pan.max_value);
-    display.displayImage_async(IMAGES[11], 0.5);
-    show_display_status();
+    display.displayImage_async(IMAGES[11], 1.2);
+    // NO show_display_status() - avoid conflict with async display
   }
 
   void virtual _TRIGHT()
@@ -691,8 +691,8 @@ public:
       return;
     pan.startMove(pan.read_pos() - SERVO_STEP);
     Serial.printf("PAN  pos=%d  min=%d  max=%d\n", pan.read_pos(), pan.min_value, pan.max_value);
-    display.displayImage_async(IMAGES[9], 0.5);
-    show_display_status();
+    display.displayImage_async(IMAGES[9], 1.2);
+    // NO show_display_status() - avoid conflict with async display
   }
 
   void virtual _TDOWN()
@@ -701,8 +701,8 @@ public:
       return;
     tilt.startMove(tilt.read_pos() - SERVO_STEP);
     Serial.printf("TILT pos=%d  min=%d  max=%d\n", tilt.read_pos(), tilt.min_value, tilt.max_value);
-    display.displayImage_async(IMAGES[8], 0.5);
-    show_display_status();
+    display.displayImage_async(IMAGES[8], 1.2);
+    // NO show_display_status() - avoid conflict with async display
   }
 
   void virtual _TUP()
@@ -711,8 +711,8 @@ public:
       return;
     tilt.startMove(tilt.read_pos() + SERVO_STEP);
     Serial.printf("TILT pos=%d  min=%d  max=%d\n", tilt.read_pos(), tilt.min_value, tilt.max_value);
-    display.displayImage_async(IMAGES[10], 0.5);
-    show_display_status();
+    display.displayImage_async(IMAGES[10], 1.2);
+    // NO show_display_status() - avoid conflict with async display
   }
 
   void program()

@@ -28,9 +28,12 @@ void LEDdisplay::clear(){
   }
 }
 
-// Draw image to LED matrix immediately (non-blocking)
+// Draw image to LED matrix immediately (non-blocking) - NO clear here!
 void LEDdisplay::display_now(uint64_t image) {
-  clear();
+  // DON'T call clear() here - it would erase the display!
+  // Just draw directly on top of whatever was there before.
+  // Old display content (if any) will be overwritten.
+  
   for (int i = 0; i < 8; i++) {
     byte row = (image >> i * 8) & 0xFF;
     for (int j = 0; j < 8; j++) {
@@ -49,7 +52,7 @@ void LEDdisplay::displayImage_async(uint64_t image, float seconds) {
   // Display immediately
   display_now(image);
   
-  Serial.printf("INFO: Display async started for %.1f seconds\n", seconds);
+  Serial.printf("INFO: Display async started for %.1f seconds (%lu ms)\n", seconds, _pending_display.duration_ms);
 }
 
 // Call from main loop to check if display duration expired
@@ -62,9 +65,10 @@ void LEDdisplay::update() {
   
   if (elapsed >= _pending_display.duration_ms) {
     // Duration expired, clear display
+    Serial.printf("INFO: Display async expired (%lu ms elapsed >= %lu ms duration). Clearing.\n", 
+                  elapsed, _pending_display.duration_ms);
     clear();
     _pending_display.active = false;
-    Serial.printf("INFO: Display async completed (duration %lu ms)\n", _pending_display.duration_ms);
   }
 }
 
