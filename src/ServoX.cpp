@@ -191,18 +191,38 @@ void ServoX::taskWrapper(void* parameter) {
 void ServoX::moveServo(int startAngle, int endAngle) {
   //used for identify when servo is still moving
   this->moving=1;
+  
+  // Timeout protection: prevent jam hangs (5 second max movement)
+  unsigned long startTime = millis();
+  const unsigned long MOVE_TIMEOUT = 5000; // 5000ms = 5 seconds
+  
   if (startAngle < endAngle) {
       for (int angle = startAngle; angle <= endAngle; angle++) {
+          // Check timeout: if servo is stuck, break out of loop
+          if (millis() - startTime > MOVE_TIMEOUT) {
+              Serial.printf("ERROR: Servo '%s' TIMEOUT during movement from %d to %d (stuck at %d)\n", 
+                           name.c_str(), startAngle, endAngle, angle);
+              break;
+          }
           _servo.write(angle);
           vTaskDelay(delayMs / portTICK_PERIOD_MS);
       }
   } else if (startAngle > endAngle) {
       for (int angle = startAngle; angle >= endAngle; angle--) {
+          // Check timeout: if servo is stuck, break out of loop
+          if (millis() - startTime > MOVE_TIMEOUT) {
+              Serial.printf("ERROR: Servo '%s' TIMEOUT during movement from %d to %d (stuck at %d)\n", 
+                           name.c_str(), startAngle, endAngle, angle);
+              break;
+          }
           _servo.write(angle);
           vTaskDelay(delayMs / portTICK_PERIOD_MS);
       }
   }
+  
   this->moving=0;
+  Serial.printf("INFO: Servo '%s' movement completed: %d -> %d (elapsed: %lu ms)\n", 
+               name.c_str(), startAngle, endAngle, millis() - startTime);
 }
 
 
