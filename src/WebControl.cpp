@@ -669,8 +669,16 @@ void WebControl::_connect_wifi()
 {
   WiFi.mode(WIFI_AP);
   WiFi.softAP(WIFI_SSID, WIFI_PASS);
+  IPAddress apIP(192, 168, 4, 1);
+  IPAddress apSubnet(255, 255, 255, 0);
+  WiFi.softAPConfig(apIP, apIP, apSubnet);
+  
+  // Start DNS server - redirects ALL DNS queries to AP IP
+  _dnsServer.start(53, "*", apIP);
+  
   Serial.printf("WiFi AP started — SSID: %s  http://%s\n",
                 WIFI_SSID, WiFi.softAPIP().toString().c_str());
+  Serial.println("DNS server started on port 53 (captive portal mode)");
 }
 
 void WebControl::_register_routes()
@@ -700,7 +708,17 @@ void WebControl::_register_routes()
   _server.on("/firmware", HTTP_GET, _s_firmware);
   _server.on("/update", HTTP_POST, _s_update_done, _s_update_upload);
   _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
-  _server.onNotFound([this](){ _server.send(404, "text/plain", ""); });
+  
+  // Captive portal routes - iOS/Android/Windows probes
+  _server.on("/hotspot-detect.html", HTTP_GET, _s_captive_portal);
+  _server.on("/generate_204", HTTP_GET, _s_captive_portal);
+  _server.on("/gen_204", HTTP_GET, _s_captive_portal);
+  _server.on("/ncsi.txt", HTTP_GET, _s_captive_portal);
+  _server.on("/connecttest.txt", HTTP_GET, _s_captive_portal);
+  _server.on("/fwlink", HTTP_GET, _s_captive_portal);
+  
+  // Catch-all: redirect any unknown request to home page
+  _server.onNotFound(_s_captive_portal);
 }
 
 // ── HTTP handlers ─────────────────────────────────────────────────────────────
@@ -1028,6 +1046,14 @@ void WebControl::_handle_status()
   _server.send(200, "application/json", buffer);
 }
 
+void WebControl::_handle_captive_portal()
+{
+  // Redirect all captive portal probes to home page
+  _server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  _server.sendHeader("Location", "http://192.168.4.1/", true);
+  _server.send(302, "text/plain", "Redirecting to Robot Control");
+}
+
 // ── FreeRTOS task ─────────────────────────────────────────────────────────────
 
 void WebControl::_task(void *param)
@@ -1040,6 +1066,7 @@ void WebControl::_task(void *param)
     Serial.println("WebServer started on port 80");
     while (true)
     {
+      self->_dnsServer.processNextRequest();  // Process DNS queries for captive portal
       self->_server.handleClient();
       vTaskDelay(10 / portTICK_PERIOD_MS);
     }

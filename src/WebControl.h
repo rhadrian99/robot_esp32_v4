@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <Update.h>
 
 // ── WiFi Access Point credentials ────────────────────────────
@@ -22,6 +23,7 @@ public:
 
 private:
   WebServer _server;
+  DNSServer _dnsServer;
 
   void _connect_wifi();
   void _register_routes();
@@ -52,6 +54,7 @@ private:
   void _handle_firmware();
   void _handle_update_upload();
   void _handle_update_done();
+  void _handle_captive_portal();
 
   // FreeRTOS task
   static void _task(void *param);
@@ -83,6 +86,7 @@ private:
   static void _s_firmware()      { _instance->_handle_firmware(); }
   static void _s_update_upload() { _instance->_handle_update_upload(); }
   static void _s_update_done()   { _instance->_handle_update_done(); }
+  static void _s_captive_portal() { _instance->_handle_captive_portal(); }
 };
 
 #endif
