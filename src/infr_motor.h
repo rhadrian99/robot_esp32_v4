@@ -31,7 +31,7 @@ class infr_motor: public infrared_template_empty
       motor_up.save_data_as();
       motor_up.load_data_as(); // load and report
       
-      display.displayImage(IMAGES[12],1); // ok save
+      display.displayImage_async(IMAGES[12],1); // ok save
       show_display_status();
       
     }
@@ -51,7 +51,7 @@ class infr_motor: public infrared_template_empty
       motor_down.save_data_as();
       motor_down.load_data_as();
       
-      display.displayImage(IMAGES[12],1); // ok save
+      display.displayImage_async(IMAGES[12],1); // ok save
       show_display_status();
       
     }
@@ -61,7 +61,7 @@ class infr_motor: public infrared_template_empty
     display.show_char('R',0.5);
     motor_up.check_data(false);
     motor_down.check_data(false);
-    display.displayImage(IMAGES[12],1); // ok save
+    display.displayImage_async(IMAGES[12],1); // ok save
 
   }  
   
@@ -118,7 +118,7 @@ class infr_motor: public infrared_template_empty
       motor_down.increase_speed(MOTOR_STEP_SETUP);
     else
       motor_up.increase_speed(SUPPORT_STEP_SETUP); // NOSPIN
-    display.displayImage(IMAGES[10], 0.5);
+    display.displayImage_async(IMAGES[10], 0.5);
   }
 
   void virtual _VDOWN()
@@ -129,7 +129,7 @@ class infr_motor: public infrared_template_empty
       motor_down.decrease_speed(MOTOR_STEP_SETUP);
     else
       motor_up.decrease_speed(SUPPORT_STEP_SETUP); // NOSPIN
-    display.displayImage(IMAGES[8], 0.2);
+    display.displayImage_async(IMAGES[8], 0.2);
   }
 
   // P+/P- controls the support motor (the one not controlled by V+/V-):
@@ -144,7 +144,7 @@ class infr_motor: public infrared_template_empty
       motor_up.increase_speed(SUPPORT_STEP_SETUP);
     else
       motor_down.increase_speed(SUPPORT_STEP_SETUP); // NOSPIN
-    display.displayImage(IMAGES[10], 0.2);
+    display.displayImage_async(IMAGES[10], 0.2);
   }
 
   void virtual _PDOWN()
@@ -155,7 +155,7 @@ class infr_motor: public infrared_template_empty
       motor_up.decrease_speed(SUPPORT_STEP_SETUP);
     else
       motor_down.decrease_speed(SUPPORT_STEP_SETUP); // NOSPIN
-    display.displayImage(IMAGES[8], 0.2);
+    display.displayImage_async(IMAGES[8], 0.2);
   }
 
 

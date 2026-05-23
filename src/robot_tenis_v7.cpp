@@ -159,6 +159,8 @@ void setup()
 //////////////////////////////////////////////////////
 void loop()
 {
+  // Update async display: check if duration expired and clear if needed
+  display.update();
 
   if (execute == true && mode == 'N')
   {

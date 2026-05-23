@@ -28,6 +28,46 @@ void LEDdisplay::clear(){
   }
 }
 
+// Draw image to LED matrix immediately (non-blocking)
+void LEDdisplay::display_now(uint64_t image) {
+  clear();
+  for (int i = 0; i < 8; i++) {
+    byte row = (image >> i * 8) & 0xFF;
+    for (int j = 0; j < 8; j++) {
+      lc.setLed(0, i, j, bitRead(row, j));
+    }
+  }
+}
+
+// Async display: set duration and return immediately (non-blocking)
+void LEDdisplay::displayImage_async(uint64_t image, float seconds) {
+  _pending_display.image = image;
+  _pending_display.start_time = millis();
+  _pending_display.duration_ms = (unsigned long)(1000.0 * seconds);
+  _pending_display.active = true;
+  
+  // Display immediately
+  display_now(image);
+  
+  Serial.printf("INFO: Display async started for %.1f seconds\n", seconds);
+}
+
+// Call from main loop to check if display duration expired
+void LEDdisplay::update() {
+  if (!_pending_display.active) {
+    return;  // No display active, nothing to do
+  }
+  
+  unsigned long elapsed = millis() - _pending_display.start_time;
+  
+  if (elapsed >= _pending_display.duration_ms) {
+    // Duration expired, clear display
+    clear();
+    _pending_display.active = false;
+    Serial.printf("INFO: Display async completed (duration %lu ms)\n", _pending_display.duration_ms);
+  }
+}
+
 
 void LEDdisplay::displayImage(uint64_t image,float seconds) {
   clear();

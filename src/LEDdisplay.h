@@ -63,11 +63,22 @@ LEDdisplay(int dPin, int clPin, int csPin, int devices);
 void timer(unsigned long reftime);
 void clear();
 void displayImage(uint64_t image,float seconds);
+void displayImage_async(uint64_t image, float seconds);
+void display_now(uint64_t image);
+void update();  // Call from main loop to check if display duration expired
 void barX(volatile int16_t val, int16_t x1, int16_t x2);
 void status(int16_t _S1, int16_t _S2, int16_t _F1);
 void show_char(char ch, float seconds);
 void show_char_no_delay(char ch);
 
+private:
+  // Async display state
+  struct {
+    uint64_t image;
+    unsigned long start_time;
+    unsigned long duration_ms;
+    bool active;
+  } _pending_display = {0, 0, 0, false};
 
 }; // end class LED display
 #endif

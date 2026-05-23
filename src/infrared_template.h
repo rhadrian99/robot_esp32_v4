@@ -299,7 +299,7 @@ public:
       }
 
       current_point_waiting = 0;
-      display.displayImage(IMAGES[12], .5); // ok save
+      display.displayImage_async(IMAGES[12], .5); // ok save
       show_display_status();
     }
   }
@@ -320,7 +320,7 @@ public:
       load_target_point(point_name);
 
       current_point_waiting = 0;
-      display.displayImage(IMAGES[25], .5); // ok save
+      display.displayImage_async(IMAGES[25], .5); // ok save
       show_display_status();
     }
   }
@@ -567,19 +567,19 @@ public:
       feeder.timeout_const = 160;
 
     if (feeder.timeout_const == 160)
-      display.displayImage(IMAGES[18], 0.4);
+      display.displayImage_async(IMAGES[18], 0.4);
     if (feeder.timeout_const == 180)
-      display.displayImage(IMAGES[19], 0.4);
+      display.displayImage_async(IMAGES[19], 0.4);
     if (feeder.timeout_const == 200)
-      display.displayImage(IMAGES[20], 0.4);
+      display.displayImage_async(IMAGES[20], 0.4);
     if (feeder.timeout_const == 220)
-      display.displayImage(IMAGES[21], 0.4);
+      display.displayImage_async(IMAGES[21], 0.4);
     if (feeder.timeout_const == 240)
-      display.displayImage(IMAGES[22], 0.4);
+      display.displayImage_async(IMAGES[22], 0.4);
     if (feeder.timeout_const == 260)
-      display.displayImage(IMAGES[23], 0.4);
+      display.displayImage_async(IMAGES[23], 0.4);
     if (feeder.timeout_const == 280)
-      display.displayImage(IMAGES[24], 0.4);
+      display.displayImage_async(IMAGES[24], 0.4);
 
     feeder.save_timeout_const();
   }
@@ -632,7 +632,7 @@ public:
       motor_down.set_speed(0);
 
       mode = 'N';
-      display.displayImage(IMAGES[12], 1); // ok save
+      display.displayImage_async(IMAGES[12], 1); // ok save
       initial_position();                  // servo to neutral position
     }
     else // start the program  execute=true
@@ -681,7 +681,7 @@ public:
       return;
     pan.startMove(pan.read_pos() + SERVO_STEP);
     Serial.printf("PAN  pos=%d  min=%d  max=%d\n", pan.read_pos(), pan.min_value, pan.max_value);
-    display.displayImage(IMAGES[11], 0.5);
+    display.displayImage_async(IMAGES[11], 0.5);
     show_display_status();
   }
 
@@ -691,7 +691,7 @@ public:
       return;
     pan.startMove(pan.read_pos() - SERVO_STEP);
     Serial.printf("PAN  pos=%d  min=%d  max=%d\n", pan.read_pos(), pan.min_value, pan.max_value);
-    display.displayImage(IMAGES[9], 0.5);
+    display.displayImage_async(IMAGES[9], 0.5);
     show_display_status();
   }
 
@@ -701,7 +701,7 @@ public:
       return;
     tilt.startMove(tilt.read_pos() - SERVO_STEP);
     Serial.printf("TILT pos=%d  min=%d  max=%d\n", tilt.read_pos(), tilt.min_value, tilt.max_value);
-    display.displayImage(IMAGES[8], 0.5);
+    display.displayImage_async(IMAGES[8], 0.5);
     show_display_status();
   }
 
@@ -711,7 +711,7 @@ public:
       return;
     tilt.startMove(tilt.read_pos() + SERVO_STEP);
     Serial.printf("TILT pos=%d  min=%d  max=%d\n", tilt.read_pos(), tilt.min_value, tilt.max_value);
-    display.displayImage(IMAGES[10], 0.5);
+    display.displayImage_async(IMAGES[10], 0.5);
     show_display_status();
   }
 
