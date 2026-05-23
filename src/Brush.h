@@ -9,6 +9,10 @@
 #include <string.h>
 #include <Preferences.h>
 
+// NVS safety limits
+#define MAX_NVS_BLOB_SIZE 512     // Max size for blob in NVS
+#define MAX_MOTOR_SPEEDS_SIZE (9 * sizeof(uint16_t))  // ~18 bytes
+
 #define MOTOR_MIN 900
 #define MOTOR_MAX  1750
 

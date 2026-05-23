@@ -37,10 +37,17 @@ private:
   void _handle_motor2();
   void _handle_feeder();
   void _handle_savepos();
+  void _handle_home();
   void _handle_status();
   void _handle_step();
   void _handle_settings();
   void _handle_setlimits();
+  void _handle_motorsettings();
+  void _handle_mstatus();
+  void _handle_panmin();
+  void _handle_panmax();
+  void _handle_tiltmin();
+  void _handle_tiltmax();
 
   // FreeRTOS task
   static void _task(void *param);
@@ -58,10 +65,17 @@ private:
   static void _s_motor2()   { _instance->_handle_motor2(); }
   static void _s_feeder()   { _instance->_handle_feeder(); }
   static void _s_savepos()  { _instance->_handle_savepos(); }
+  static void _s_home()     { _instance->_handle_home(); }
   static void _s_status()   { _instance->_handle_status(); }
   static void _s_step()     { _instance->_handle_step(); }
-  static void _s_settings() { _instance->_handle_settings(); }
-  static void _s_setlimits(){ _instance->_handle_setlimits(); }
+  static void _s_settings()      { _instance->_handle_settings(); }
+  static void _s_setlimits()     { _instance->_handle_setlimits(); }
+  static void _s_motorsettings() { _instance->_handle_motorsettings(); }
+  static void _s_mstatus()       { _instance->_handle_mstatus(); }
+  static void _s_panmin()        { _instance->_handle_panmin(); }
+  static void _s_panmax()        { _instance->_handle_panmax(); }
+  static void _s_tiltmin()       { _instance->_handle_tiltmin(); }
+  static void _s_tiltmax()       { _instance->_handle_tiltmax(); }
 };
 
 #endif

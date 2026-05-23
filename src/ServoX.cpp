@@ -31,44 +31,99 @@ void ServoX::save_pos(uint8_t val)
   {
     _input = 30;
   }
-  servo_mem.begin(name.c_str(),false);
+  
+  if (!servo_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open servo NVS namespace '%s'\n", name.c_str());
+    return;
+  }
 
-  servo_mem.putUInt("position",_input);  
+  if (!servo_mem.putUInt("position", _input)) {
+    Serial.printf("ERROR: Failed to save servo position for '%s'\n", name.c_str());
+  } else {
+    Serial.printf("INFO: Servo '%s' position saved: %u\n", name.c_str(), _input);
+  }
+  
   servo_mem.end();
 }
 
 void ServoX::save_limits()
 {
-  servo_mem.begin(name.c_str(), false);
-  servo_mem.putUInt("min", min_value);
-  servo_mem.putUInt("max", max_value);
+  if (!servo_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open servo NVS namespace '%s' for limits\n", name.c_str());
+    return;
+  }
+  
+  if (!servo_mem.putUInt("min", min_value) || !servo_mem.putUInt("max", max_value)) {
+    Serial.printf("ERROR: Failed to save servo limits for '%s'\n", name.c_str());
+  } else {
+    Serial.printf("INFO: Servo '%s' limits saved: min=%u, max=%u\n", name.c_str(), min_value, max_value);
+  }
+  
   servo_mem.end();
 }
 
 void ServoX::load_limits(uint8_t default_min, uint8_t default_max)
 {
-  servo_mem.begin(name.c_str(), false);
+  if (!servo_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open servo NVS namespace '%s' for limits read\n", name.c_str());
+    min_value = default_min;
+    max_value = default_max;
+    return;
+  }
+  
   min_value = (uint8_t)servo_mem.getUInt("min", default_min);
   max_value = (uint8_t)servo_mem.getUInt("max", default_max);
+  
+  // Validate limits are reasonable
+  if (min_value >= max_value) {
+    Serial.printf("WARNING: Servo '%s' has invalid limits (min=%u >= max=%u). Using defaults.\n", 
+                  name.c_str(), min_value, max_value);
+    min_value = default_min;
+    max_value = default_max;
+  }
+  
+  Serial.printf("INFO: Servo '%s' limits loaded: min=%u, max=%u\n", name.c_str(), min_value, max_value);
   servo_mem.end();
 }
 
 void ServoX::load_pos()
 {
-  servo_mem.begin(name.c_str(),false);
-  uint16_t test=0;
-  test=(uint8_t)servo_mem.getUInt("max");  
-  Serial.print("Max: ");Serial.println(test,DEC);
-  init_value = (uint8_t)servo_mem.getUInt("position",20);  
+  if (!servo_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open servo NVS namespace '%s' for position read\n", name.c_str());
+    init_value = 30;  // Use safe default
+    startMove(init_value);
+    return;
+  }
+  
+  // First load and verify max value exists
+  uint16_t test = servo_mem.getUInt("max", 0);  // 0 = key not found
+  if (test == 0) {
+    Serial.printf("WARNING: Servo '%s' max value not found in NVS\n", name.c_str());
+  } else {
+    Serial.printf("INFO: Servo '%s' max value: %u\n", name.c_str(), test);
+  }
+  
+  // Load position with safe default
+  init_value = (uint8_t)servo_mem.getUInt("position", 20);
   
   servo_mem.end();
   
-     
-  if (init_value<min_value) {init_value=30;}
-  if (init_value>max_value) {init_value=30;}
-  startMove(init_value);
+  // Validate position is within limits
+  if (init_value < min_value) {
+    Serial.printf("WARNING: Servo '%s' position %u below min %u. Using min.\n", 
+                  name.c_str(), init_value, min_value);
+    init_value = min_value;
+  }
+  if (init_value > max_value) {
+    Serial.printf("WARNING: Servo '%s' position %u above max %u. Using max.\n", 
+                  name.c_str(), init_value, max_value);
+    init_value = max_value;
+  }
   
-
+  Serial.printf("INFO: Servo '%s' loaded position: %u (min=%u, max=%u)\n", 
+                name.c_str(), init_value, min_value, max_value);
+  
+  startMove(init_value);
 }
 
 

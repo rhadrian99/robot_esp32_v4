@@ -3,6 +3,10 @@
 
 #include <Preferences.h>
 
+// NVS safety limits
+#define MAX_TARGET_POINT_SIZE sizeof(target_point)
+#define MAX_NVS_BLOB_SIZE 512
+
 uint8_t points=2;
 
 struct target_point{
@@ -29,8 +33,22 @@ void target_save_nvm(target_point P)
 {
   Preferences point;
   Serial.print("Saved: ");Serial.println(P.name);
-  point.begin((P.name).c_str(),false);
-  point.putBytes((P.name).c_str(), &P, sizeof(P));  
+  
+  if (!point.begin((P.name).c_str(), false)) {
+    Serial.printf("ERROR: Failed to open NVS namespace for save '%s'\n", (P.name).c_str());
+    return;
+  }
+  
+  size_t size = sizeof(P);
+  if (size > MAX_NVS_BLOB_SIZE) {
+    Serial.printf("ERROR: target_point too large (%u > %u)\n", size, MAX_NVS_BLOB_SIZE);
+    point.end();
+    return;
+  }
+  
+  if (!point.putBytes((P.name).c_str(), &P, size)) {
+    Serial.printf("ERROR: Failed to write target point to NVS '%s'\n", (P.name).c_str());
+  }
   
   point.end();
    
@@ -41,14 +59,38 @@ target_point target_load_nvm(target_point P)
 {
   Preferences point;
   Serial.print("Load: ");Serial.println(P.name);
-  point.begin((P.name).c_str(),false);
+  
+  target_point result = P;  // Start with defaults
+  
+  if (!point.begin((P.name).c_str(), false)) {
+    Serial.printf("ERROR: Failed to open NVS namespace for load '%s'\n", (P.name).c_str());
+    return result;
+  }
 
   size_t _length = point.getBytesLength((P.name).c_str());
-  char buffer[_length]; 
-  point.getBytes((P.name).c_str(), buffer, _length);  
-
   
-  target_point result;
+  // Validate size
+  if (_length == 0) {
+    Serial.printf("WARNING: No data in NVS '%s'. Using defaults.\n", (P.name).c_str());
+    point.end();
+    return result;
+  }
+  
+  if (_length != MAX_TARGET_POINT_SIZE) {
+    Serial.printf("ERROR: Corrupted NVS '%s' (size=%u, expected=%u). Using defaults.\n", 
+                  (P.name).c_str(), _length, MAX_TARGET_POINT_SIZE);
+    point.end();
+    return result;
+  }
+  
+  // Use fixed-size buffer instead of VLA
+  uint8_t buffer[MAX_NVS_BLOB_SIZE] = {0};
+  if (!point.getBytes((P.name).c_str(), buffer, _length)) {
+    Serial.printf("ERROR: Failed to read target point from NVS '%s'\n", (P.name).c_str());
+    point.end();
+    return result;
+  }
+
   memcpy(&result, buffer, _length);
   
   point.end();

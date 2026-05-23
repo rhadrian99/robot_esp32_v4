@@ -84,87 +84,49 @@ motor.setPeriodHertz(50); ///  mandatory
 /// if force==true to save initial speeds in flash memory
 void Brush::check_data(bool force)
 {
+  // Validate and initialize all motor speed profiles in NVS
+  const struct {
+    const char* key;
+    uint16_t* data;
+  } profiles[] = {
+    {"nospin", _NOSPIN},
+    {"backspin", _BACKSPIN},
+    {"support_up", _SUPPORT_UP},
+    {"support_down", _SUPPORT_DOWN},
+    {"topspin", _TOPSPIN}
+  };
   
-  String dataType="nospin";
-  brush_mem.begin(dataType.c_str(),false);
-   
-  size_t length=brush_mem.getBytesLength(dataType.c_str());
-  char buffer1[length];
-  size_t _length = brush_mem.getBytes(dataType.c_str(), buffer1, length);
-  
-  if (_length==0 || force)
-  {
-  uint8_t _size=sizeof(_NOSPIN);
-  brush_mem.putBytes(dataType.c_str(), &_NOSPIN, _size);
+  for (int i = 0; i < 5; i++) {
+    const char* dataType = profiles[i].key;
+    uint16_t* defaultData = profiles[i].data;
+    
+    if (!brush_mem.begin(dataType, false)) {
+      Serial.printf("ERROR: Failed to open NVS namespace '%s'\n", dataType);
+      continue;
+    }
+    
+    size_t length = brush_mem.getBytesLength(dataType);
+    
+    // Validate length: must be either 0 (empty) or exactly right size
+    if (length > 0 && length != MAX_MOTOR_SPEEDS_SIZE) {
+      Serial.printf("WARNING: NVS '%s' corrupted (size=%u, expected=%u). Resetting.\n", 
+                    dataType, length, MAX_MOTOR_SPEEDS_SIZE);
+      brush_mem.remove(dataType);
+      length = 0;
+    }
+    
+    if (length == 0 || force) {
+      // Initialize with default values
+      uint8_t _size = sizeof(_TOPSPIN);  // All profiles are 9x uint16_t
+      if (!brush_mem.putBytes(dataType, defaultData, _size)) {
+        Serial.printf("ERROR: Failed to write NVS '%s'\n", dataType);
+      } else {
+        Serial.printf("INFO: Initialized NVS '%s' with defaults\n", dataType);
+      }
+    }
+    
+    brush_mem.end();
   }
-  brush_mem.end();
-  
-  ////////////////////////
-  dataType="backspin";
-  brush_mem.begin(dataType.c_str(),false);
-   
-  length=brush_mem.getBytesLength(dataType.c_str());
-  char buffer2[length];
-  _length = brush_mem.getBytes(dataType.c_str(), buffer2, length);
-  
-  if (_length==0 || force)
-  {
-  uint8_t _size=sizeof(_BACKSPIN);
-  brush_mem.putBytes(dataType.c_str(), &_BACKSPIN, _size);
-  }
-  brush_mem.end();
-  ///////////////////////////////
-  dataType="support_up";
-  
-  brush_mem.begin(dataType.c_str(),false);
-
-  length=brush_mem.getBytesLength(dataType.c_str());
-  char buffer3[length];
-  _length = brush_mem.getBytes(dataType.c_str(), buffer3, length);
-
-  //_length = brush_mem.getBytes(dataType.c_str(), NULL, NULL);
-  
-  if (_length==0 || force)
-  {
-  uint8_t _size=sizeof(_SUPPORT_UP);
-  brush_mem.putBytes(dataType.c_str(), &_SUPPORT_UP, _size);
-  }
-  brush_mem.end();
-  ////////////////////////////
-
-  dataType="support_down";
-  
-  brush_mem.begin(dataType.c_str(),false);
-  length=brush_mem.getBytesLength(dataType.c_str());
-  char buffer4[length];
-  _length = brush_mem.getBytes(dataType.c_str(), buffer4, length);
-  
-  //_length = brush_mem.getBytes(dataType.c_str(), NULL, NULL);
-  
-  if (_length==0 || force)
-  {
-  uint8_t _size=sizeof(_SUPPORT_DOWN);
-  brush_mem.putBytes(dataType.c_str(), &_SUPPORT_DOWN, _size);
-  }
-  brush_mem.end();
-  //////////////////////////////////////////////
-  dataType="topspin";
-  
-  brush_mem.begin(dataType.c_str(),false);
-
-  length=brush_mem.getBytesLength(dataType.c_str());
-  char buffer5[length];
-  _length = brush_mem.getBytes(dataType.c_str(), buffer5, length);
-
-  //_length = brush_mem.getBytes(dataType.c_str(), NULL, NULL);
-  
-  if (_length==0 || force)
-  {
-  uint8_t _size=sizeof(_TOPSPIN);
-  brush_mem.putBytes(dataType.c_str(), &_TOPSPIN, _size);
-  }
-  brush_mem.end();
-
 }
 
 
@@ -195,10 +157,24 @@ void Brush::save_data_as()
     dataType="nospin";
   }
 
-
-  brush_mem.begin(dataType.c_str(),false);
-  uint8_t _size=sizeof(_SPEEDS);
-  brush_mem.putBytes(dataType.c_str(), &_SPEEDS, _size);  
+  if (!brush_mem.begin(dataType.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open NVS namespace '%s' for write\n", dataType.c_str());
+    return;
+  }
+  
+  uint8_t _size = sizeof(_SPEEDS);
+  // Safety check: size must be within bounds
+  if (_size != MAX_MOTOR_SPEEDS_SIZE) {
+    Serial.printf("ERROR: Speed array size mismatch (got %u, expected %u)\n", _size, MAX_MOTOR_SPEEDS_SIZE);
+    brush_mem.end();
+    return;
+  }
+  
+  if (!brush_mem.putBytes(dataType.c_str(), &_SPEEDS, _size)) {
+    Serial.printf("ERROR: Failed to write motor speeds to NVS '%s'\n", dataType.c_str());
+  } else {
+    Serial.printf("INFO: Motor speeds saved for '%s'\n", dataType.c_str());
+  }
   
   brush_mem.end();
 
@@ -239,17 +215,41 @@ void Brush::load_data_as()
     spintype="NOSPIN";
   }
 
-  brush_mem.begin(dataType.c_str(),false);
+  if (!brush_mem.begin(dataType.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open NVS namespace '%s' for read\n", dataType.c_str());
+    return;
+  }
 
-  size_t length=brush_mem.getBytesLength(dataType.c_str());
-  char buffer3[length];
-  size_t _length = brush_mem.getBytes(dataType.c_str(), buffer3, length);
+  size_t length = brush_mem.getBytesLength(dataType.c_str());
   
-  char buffer[_length]; 
-  brush_mem.getBytes(dataType.c_str(), buffer, _length);  
+  // Validate size: must be either 0 (use defaults) or exactly correct size
+  if (length > 0 && length != MAX_MOTOR_SPEEDS_SIZE) {
+    Serial.printf("ERROR: Corrupted NVS '%s' (size=%u, expected=%u). Using defaults.\n", 
+                  dataType.c_str(), length, MAX_MOTOR_SPEEDS_SIZE);
+    brush_mem.end();
+    return;
+  }
+  
+  if (length == 0) {
+    Serial.printf("WARNING: NVS '%s' empty. Using defaults.\n", dataType.c_str());
+    brush_mem.end();
+    return;
+  }
+  
+  // Use fixed-size buffer instead of VLA
+  uint8_t buffer[MAX_MOTOR_SPEEDS_SIZE] = {0};
+  size_t _length = brush_mem.getBytes(dataType.c_str(), buffer, length);
+  
+  if (_length != length) {
+    Serial.printf("ERROR: Failed to read full motor speeds (read %u, expected %u)\n", _length, length);
+    brush_mem.end();
+    return;
+  }
+  
   memcpy(_SPEEDS, buffer, _length);
+  Serial.printf("INFO: Motor speeds loaded from '%s'\n", dataType.c_str());
+  
   brush_mem.end();
-
 
   reporting();
   
