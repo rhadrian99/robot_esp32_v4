@@ -107,8 +107,8 @@
 #define cs_Pin 25   // 33  //esp32
 #define data_Pin 17 // 25  //esp32
 
-// Firmware version (defined in robot_tenis_v7.cpp)
-extern const char FW_VERSION[];
+// Firmware version
+#define FW_VERSION "6.2"
 
 #endif
 

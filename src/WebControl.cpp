@@ -121,27 +121,25 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div id="status">ready</div>
 
+  <div style="background:#16213e;border-radius:14px;padding:8px 14px;width:100%;max-width:320px;text-align:center;font-size:12px;color:#888">
+    Firmware v<span id="fw-version">-</span>
+  </div>
+
   <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px">
     <div style="display:flex;gap:8px">
-      <a href="/settings" style="flex:1;text-decoration:none">
-        <button style="width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+      <button onclick="stopPolling();window.location='/settings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
                        font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-          &#9881; Servo Settings
-        </button>
-      </a>
-      <a href="/motorsettings" style="flex:1;text-decoration:none">
-        <button style="width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
-                       font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-          &#9881; Motor Settings
-        </button>
-      </a>
-    </div>
-    <a href="/firmware" style="width:100%;text-decoration:none">
-      <button style="width:100%;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;
-                     font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-        &#11014; Firmware Update
+        &#9881; Servo Settings
       </button>
-    </a>
+      <button onclick="stopPolling();window.location='/motorsettings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+                       font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
+        &#9881; Motor Settings
+      </button>
+    </div>
+    <button onclick="stopPolling();window.location='/firmware'" style="width:100%;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;
+                     font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
+      &#11014; Firmware Update
+    </button>
   </div>
 
   <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:#0008;z-index:999;align-items:center;justify-content:center">
@@ -232,10 +230,19 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           if(d.tilt_min!==undefined) document.getElementById('tilt-min').textContent=d.tilt_min;
           if(d.tilt_max!==undefined) document.getElementById('tilt-max').textContent=d.tilt_max;
           if(d.step!==undefined) document.getElementById('btn-step').textContent=d.step+'\u00b0';
+          if(d.version!==undefined) document.getElementById('fw-version').textContent=d.version;
         }).catch(()=>{});
     }
-    setInterval(pollStatus,500);
-    pollStatus();
+    var pollInterval;
+    function startPolling(){
+      pollInterval=setInterval(pollStatus,500);
+      pollStatus();
+    }
+    function stopPolling(){
+      if(pollInterval) clearInterval(pollInterval);
+    }
+    window.addEventListener('beforeunload',stopPolling);
+    startPolling();
   </script>
 </body>
 </html>
@@ -245,169 +252,81 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 // ── Firmware Update page ──────────────────────────────────────────────────────
 static const char FIRMWARE_UPDATE_PAGE[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
-<html lang="ro">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Firmware Update</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:sans-serif;background:#1a1a2e;color:#eee;
-         display:flex;flex-direction:column;align-items:center;
-         padding:20px;gap:16px;min-height:100vh}
-    h2{letter-spacing:2px;font-size:18px;margin-bottom:4px;color:#66dd66}
-    .card{background:#16213e;border-radius:14px;padding:16px 20px;
-          width:100%;max-width:340px}
-    .btn{width:100%;border:none;border-radius:10px;cursor:pointer;
-         font-size:16px;color:#eee;padding:13px;font-weight:bold;margin-bottom:8px}
-    .btn-upload{background:#1a3a1a;color:#66dd66}
-    .btn-back{background:#0f3460;color:#aaa}
-    #status{font-size:12px;color:#999;margin-top:12px;padding:10px;
-            background:#0f3460;border-radius:8px;border-left:3px solid #555}
-    #status.success{border-left-color:#66dd66;color:#66dd66}
-    #status.error{border-left-color:#e94560;color:#e94560}
-    #status.info{border-left-color:#e94560;color:#aaa}
-    .progress{width:100%;height:24px;background:#0f3460;border-radius:8px;
-              overflow:hidden;display:none;margin:12px 0}
-    .progress.show{display:block}
-    .progress-bar{height:100%;background:#66dd66;width:0%;transition:width 0.2s}
-    .file-input-wrapper{position:relative;overflow:hidden;display:inline-block;width:100%}
-    .file-input-wrapper input[type=file]{position:absolute;left:-9999px}
-    .file-input-label{display:flex;align-items:center;justify-content:center;
-                      background:#1a3a1a;color:#66dd66;padding:13px;
-                      border-radius:10px;cursor:pointer;font-weight:bold;
-                      border:2px dashed #66dd66}
-    .file-input-label:hover{background:#0a2a0a}
-    .file-name{font-size:12px;color:#aaa;margin-top:8px;text-align:center}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firmware Update</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px}
+h2{color:#e94560;text-align:center;margin:12px 0 20px;font-size:18px}
+.card{background:#16213e;border-radius:12px;padding:18px;margin-bottom:12px}
+.lbl{font-size:12px;color:#888;margin-bottom:8px}
+button{width:100%;padding:16px;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;touch-action:manipulation}
+#otaStatus{margin-top:8px;font-size:13px;color:#aaa;min-height:18px}
+#otaStatus.error{color:#e94560}
+#otaStatus.success{color:#66dd66}
+#otaStatus.info{color:#888}
+progress{width:100%;height:8px;border-radius:4px;accent-color:#e94560;display:none;margin-top:6px}
+.back{display:block;text-align:center;color:#888;text-decoration:none;margin-top:4px;padding:14px;border:1px solid #333;border-radius:10px;background:#1a1a2e;font-size:16px;font-weight:600;touch-action:manipulation}
+</style>
 </head>
 <body>
-  <h2>&#11014; Firmware Update</h2>
-
-  <div class="card">
-    <div style="font-size:12px;color:#aaa;margin-bottom:12px;line-height:1.6">
-      <p>Selecteaza un fisier .bin de firmware din folderul <code>release/</code></p>
-      <p style="margin-top:8px;font-size:10px;color:#666">Ex: firmware61.bin pentru versiunea 6.1</p>
-    </div>
-
-    <div class="file-input-wrapper">
-      <label class="file-input-label" for="fw-file">Alege fisier...</label>
-      <input type="file" id="fw-file" accept=".bin" onchange="handleFileSelect(event)">
-    </div>
-    <div class="file-name" id="file-name"></div>
-
-    <div class="progress" id="progress">
-      <div class="progress-bar" id="progress-bar"></div>
-    </div>
-
-    <button class="btn btn-upload" onclick="uploadFirmware()" id="upload-btn" disabled>
-      &#128304; Upload Firmware
-    </button>
-  </div>
-
-  <div id="status">...</div>
-
-  <a href="/" style="width:100%;max-width:340px;text-decoration:none">
-    <button class="btn btn-back">&#8592; Inapoi</button>
-  </a>
-
-  <script>
-    let selectedFile = null;
-    let fileSize = 0;
-
-    function handleFileSelect(e){
-      selectedFile = e.target.files[0];
-      if(!selectedFile){
-        document.getElementById('file-name').textContent = '';
-        document.getElementById('upload-btn').disabled = true;
-        return;
+<h2>Firmware Update</h2>
+<div class="card">
+  <div class="lbl">Selecteaza fisier .bin</div>
+  <input type="file" id="fwFile" accept=".bin" onchange="readFwFile()" style="color:#e0e0e0;margin-bottom:8px;width:100%">
+  <button onclick="uploadFw()" style="background:#4a148c;color:#e1bee7">Upload Firmware</button>
+  <progress id="fwProg" value="0" max="100"></progress>
+  <div id="otaStatus"></div>
+</div>
+<a href="/" class="back">&#8592; Inapoi</a>
+<script>
+function readFwFile(){
+  var f=document.getElementById('fwFile').files[0];
+  var st=document.getElementById('otaStatus');
+  if(!f){st.textContent='';return;}
+  if(!f.name.toLowerCase().endsWith('.bin')){st.className='error';st.textContent='Fisier invalid! Trebuie sa fie .bin';return;}
+  st.className='info';st.textContent='Analizeaza...';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b=new Uint8Array(e.target.result);
+    if(b[0]!==0xE9){st.className='error';st.textContent='Header invalid! Nu e firmware ESP32 (magic=0x'+b[0].toString(16).toUpperCase()+')';return;}
+    var chipId=b[12]|(b[13]<<8);
+    if(chipId!==0){st.className='error';st.textContent='Firmware pentru chip diferit (ID=0x'+chipId.toString(16).padStart(4,'0').toUpperCase()+', asteptam ESP32)';return;}
+    var ver='unknown';
+    for(var i=0;i<b.length-36;i++){
+      if(b[i]===0xFE&&b[i+1]===0xED&&b[i+2]===0xBE&&b[i+3]===0xEF){
+        var v='';
+        for(var j=0;j<32;j++){if(b[i+4+j]===0)break;v+=String.fromCharCode(b[i+4+j]);}
+        if(v)ver=v;
+        break;
       }
-      fileSize = selectedFile.size;
-      const sizeKB = (fileSize / 1024).toFixed(1);
-      document.getElementById('file-name').textContent = 
-        selectedFile.name + ' (' + sizeKB + ' KB)';
-      document.getElementById('upload-btn').disabled = false;
-      setStatus('Fisier selectat, gata pentru upload', 'info');
     }
-
-    function setStatus(msg, type='info'){
-      const st = document.getElementById('status');
-      st.textContent = msg;
-      st.className = type;
-    }
-
-    function uploadFirmware(){
-      if(!selectedFile){
-        setStatus('Selecteaza un fisier!', 'error');
-        return;
-      }
-
-      if(!selectedFile.name.endsWith('.bin')){
-        setStatus('Doar fisiere .bin sunt acceptate!', 'error');
-        return;
-      }
-
-      if(fileSize < 100000 || fileSize > 1500000){
-        setStatus('Fisierul trebuie sa fie intre 100KB si 1.5MB!', 'error');
-        return;
-      }
-
-      setStatus('Validare header...', 'info');
-      
-      // Citeste primii 4 bytes pentru header ESP32
-      const reader = new FileReader();
-      reader.onload = function(e){
-        const arr = new Uint8Array(e.target.result, 0, 4);
-        
-        // ESP32 magic byte: 0xE9
-        if(arr[0] !== 0xE9){
-          setStatus('Header invalid! Nu e un firmware ESP32.', 'error');
-          return;
-        }
-
-        setStatus('Header OK. Incepe upload...', 'info');
-        sendFirmware();
-      };
-      reader.readAsArrayBuffer(selectedFile.slice(0, 4));
-    }
-
-    function sendFirmware(){
-      const form = new FormData();
-      form.append('file', selectedFile);
-
-      const xhr = new XMLHttpRequest();
-      xhr.upload.addEventListener('progress', function(e){
-        if(e.lengthComputable){
-          const pct = Math.round((e.loaded / e.total) * 100);
-          document.getElementById('progress').classList.add('show');
-          document.getElementById('progress-bar').style.width = pct + '%';
-          setStatus('Uploading: ' + pct + '%', 'info');
-        }
-      });
-
-      xhr.addEventListener('load', function(){
-        if(xhr.status === 200){
-          setStatus('Upload complet! Dispozitivul se restarteaza...', 'success');
-          document.getElementById('progress-bar').style.width = '100%';
-          setTimeout(() => {
-            setStatus('Reconectare in progres...', 'info');
-            setTimeout(() => window.location.href = '/', 3000);
-          }, 1000);
-        }else{
-          setStatus('Eroare upload: ' + xhr.status, 'error');
-        }
-      });
-
-      xhr.addEventListener('error', function(){
-        setStatus('Eroare conexiune!', 'error');
-      });
-
-      xhr.open('POST', '/update');
-      xhr.send(form);
-    }
-
-    setStatus('Gata. Selecteaza un fisier .bin', 'info');
-  </script>
+    st.className='success';
+    st.textContent='Versiune: '+ver+' | '+Math.round(f.size/1024)+'KB | ESP32 (OK)';
+  };
+  reader.onerror=function(){st.className='error';st.textContent='Eroare citire fisier'};
+  reader.readAsArrayBuffer(f);
+}
+function uploadFw(){
+  var f=document.getElementById('fwFile').files[0];
+  if(!f){document.getElementById('otaStatus').textContent='Selecteaza un fisier .bin';return;}
+  if(!f.name.toLowerCase().endsWith('.bin')){document.getElementById('otaStatus').textContent='Fisier invalid!';return;}
+  if(f.size<100000){document.getElementById('otaStatus').textContent='Fisier prea mic ('+Math.round(f.size/1024)+'KB)';return;}
+  var prog=document.getElementById('fwProg');
+  var st=document.getElementById('otaStatus');
+  var fd=new FormData();fd.append('file',f,f.name);
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','/update');
+  xhr.upload.onprogress=function(e){if(e.lengthComputable){var p=Math.round(e.loaded/e.total*100);prog.style.display='block';prog.value=p;st.className='info';st.textContent='Upload: '+p+'% ('+Math.round(f.size/1024)+'KB)';}};
+  xhr.onload=function(){prog.style.display='none';if(xhr.status===200&&xhr.responseText==='OK'){st.className='success';st.textContent='Upload OK! Dispozitivul se restarteaza...';}else{st.className='error';st.textContent='Eroare: '+xhr.responseText;}};
+  xhr.onerror=function(){st.className='error';st.textContent='Eroare conexiune';prog.style.display='none';};
+  st.className='info';st.textContent='Uploading ('+Math.round(f.size/1024)+'KB)...';
+  xhr.send(fd);
+}
+</script>
 </body>
 </html>
 )rawhtml";

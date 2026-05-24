@@ -6,15 +6,9 @@ using namespace std;
 #include <Preferences.h>
 #include "WebControl.h"
 
-#define VERSION 6       // added in april 2025
-#define MINOR_VERSION 1 //
-
-// Firmware version string (for web interface) - as linkable const char[]
-const char FW_VERSION[] = "6.2";
-
-// Version tag embedded in binary - readable by browser/OTA before flash
+// Version tag embedded in binary - readable by browser before OTA flash
 // Magic: 0xFE 0xED 0xBE 0xEF followed by null-terminated version string
-const char __attribute__((used)) FW_VERSION_TAG[] = "\xFE\xED\xBE\xEF" "6.2";
+const char __attribute__((used)) FW_VERSION_TAG[] = "\xFE\xED\xBE\xEF" FW_VERSION;
 
 char mode = 'N'; // initial normal program
 uint8_t servo_step = 6; // degrees per arrow press (toggleable 4/6/8 via web)
