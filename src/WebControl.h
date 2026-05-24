@@ -47,6 +47,13 @@ private:
   void _handle_setlimits();
   void _handle_motorsettings();
   void _handle_mstatus();
+  void _handle_t1save();
+  void _handle_t2save();
+  void _handle_setspin();
+  void _handle_vup();
+  void _handle_vdown();
+  void _handle_pup();
+  void _handle_pdown();
   void _handle_panmin();
   void _handle_panmax();
   void _handle_tiltmin();
@@ -79,6 +86,13 @@ private:
   static void _s_setlimits()     { _instance->_handle_setlimits(); }
   static void _s_motorsettings() { _instance->_handle_motorsettings(); }
   static void _s_mstatus()       { _instance->_handle_mstatus(); }
+  static void _s_t1save()        { _instance->_handle_t1save(); }
+  static void _s_t2save()        { _instance->_handle_t2save(); }
+  static void _s_setspin()       { _instance->_handle_setspin(); }
+  static void _s_vup()           { _instance->_handle_vup(); }
+  static void _s_vdown()         { _instance->_handle_vdown(); }
+  static void _s_pup()           { _instance->_handle_pup(); }
+  static void _s_pdown()         { _instance->_handle_pdown(); }
   static void _s_panmin()        { _instance->_handle_panmin(); }
   static void _s_panmax()        { _instance->_handle_panmax(); }
   static void _s_tiltmin()       { _instance->_handle_tiltmin(); }

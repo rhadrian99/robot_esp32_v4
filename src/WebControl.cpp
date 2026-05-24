@@ -503,35 +503,64 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
   <title>Motor Settings</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:sans-serif;background:#1a1a2e;color:#eee;
-         display:flex;flex-direction:column;align-items:center;
-         padding:20px;gap:16px;min-height:100vh}
-    h2{letter-spacing:2px;font-size:18px}
-    .card{background:#16213e;border-radius:14px;padding:16px 20px;
-          width:100%;max-width:340px}
-    .btn-spin{width:100%;border:none;border-radius:10px;cursor:pointer;
-              font-size:18px;font-weight:bold;padding:14px;color:#eee;
-              background:#0f3460;letter-spacing:1px}
-    .btn-spin.TOPSPIN  {background:#1a6b3a;color:#6fffaa}
-    .btn-spin.BACKSPIN {background:#6b1a1a;color:#ffaaaa}
-    .btn-spin.NOSPIN   {background:#0f3460;color:#aaa}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th{color:#aaa;font-weight:normal;padding:6px 4px;text-align:center;border-bottom:1px solid #0f3460}
-    td{padding:6px 4px;text-align:center;color:#e94560;font-weight:bold}
-    td.idx{color:#555;font-size:11px}
-    .btn-back{width:100%;border:none;border-radius:10px;background:#0f3460;
-              color:#aaa;font-size:16px;padding:13px;cursor:pointer;font-weight:bold}
-    #status{font-size:12px;color:#555}
+    body{font-family:sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px}
+    h2{color:#e94560;text-align:center;margin:12px 0 20px;font-size:18px}
+    .card{background:#16213e;border-radius:12px;padding:18px;margin-bottom:12px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .col-title{font-size:13px;color:#888;font-weight:bold;letter-spacing:1px}
+    .btn{border:none;border-radius:10px;cursor:pointer;font-weight:bold;touch-action:manipulation;padding:12px 16px}
+    .btn-up-down{font-size:28px;width:64px;height:64px;background:#0f3460;color:#e94560}
+    .btn-up-down:active{transform:scale(0.9);background:#1a5480}
+    button:disabled{cursor:not-allowed;opacity:0.5}
+    .display{font-size:32px;font-weight:bold;color:#e94560;text-align:center;min-width:100px;padding:12px}
+    .display-box{background:#0f0f1a;border-radius:8px;border:1px solid #333;padding:8px}
+    .btn-save{width:100%;background:#4a148c;color:#e1bee7;font-size:14px}
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{color:#888;font-weight:normal;padding:8px 4px;text-align:center;border-bottom:1px solid #333}
+    td{padding:8px 4px;text-align:center;color:#e94560;font-weight:bold}
+    td.idx{color:#555;font-size:10px}
+    .const-row{display:flex;justify-content:space-between;font-size:12px;color:#888;padding:6px 0}
+    .back{display:block;text-align:center;color:#888;text-decoration:none;padding:14px;border:1px solid #333;border-radius:10px;background:#1a1a2e;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;border:none}
   </style>
 </head>
 <body>
-  <h2>&#9881; Motor Settings</h2>
+<h2>Motor Speed Setup</h2>
 
-  <div class="card">
-    <button class="btn-spin" id="btn-spin" onclick="toggleSpin()">...</button>
+<div class="card">
+  <div style="text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;color:#888;margin-bottom:8px">SPIN MODE</div>
+    <button class="btn" id="spin-btn" style="background:#e94560;color:#0f0f1a;font-size:16px;font-weight:bold;padding:12px 24px;border-radius:10px;cursor:pointer" onclick="toggleSpin()">TOPSPIN</button>
   </div>
+</div>
 
-  <div class="card">
+<div class="card">
+  <div class="row">
+    <div class="col">
+      <span class="col-title">MAIN</span>
+      <button class="btn btn-up-down" onclick="incMain()">▲</button>
+      <div class="display-box">
+        <div class="display" id="main-val">-</div>
+      </div>
+      <button class="btn btn-up-down" onclick="decMain()">▼</button>
+      <button class="btn btn-save" onclick="saveMain()">SAVE T1</button>
+    </div>
+    <div class="col">
+      <span class="col-title">SUPPORT</span>
+      <button class="btn btn-up-down" id="pup-btn" onclick="incSupp()">▲</button>
+      <div class="display-box">
+        <div class="display" id="supp-val">-</div>
+      </div>
+      <button class="btn btn-up-down" id="pdown-btn" onclick="decSupp()">▼</button>
+      <button class="btn btn-save" id="t2-btn" onclick="saveSupp()">SAVE T2</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#888;margin-bottom:12px;font-weight:bold">Viteze Salvate</div>
+  <div class="table-wrap">
     <table>
       <thead>
         <tr>
@@ -545,35 +574,92 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
       </tbody>
     </table>
   </div>
+</div>
 
-  <div style="width:100%;max-width:340px">
-    <button class="btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
-  </div>
+<div class="card">
+  <div style="font-size:12px;color:#888;margin-bottom:12px;font-weight:bold">Constante</div>
+  <div class="const-row"><span>MOTOR_STEP</span><span>30</span></div>
+  <div class="const-row"><span>MOTOR_STEP_SETUP</span><span>10</span></div>
+  <div class="const-row"><span>MOTOR_STEP_NOSPIN</span><span>4</span></div>
+  <div class="const-row"><span>SUPPORT_STEP_SETUP</span><span>4</span></div>
+  <div class="const-row"><span>SUPPORT_STEP</span><span>8</span></div>
+</div>
 
-  <div id="status">ready</div>
+<button class="back" onclick="window.location='/'">◄ Inapoi</button>
+<div id="status" style="text-align:center;font-size:12px;color:#666;margin-top:16px">ready</div>
 
-  <script>
-    function poll(){
-      fetch('/mstatus')
-        .then(r=>r.json())
-        .then(d=>{
-          var btn=document.getElementById('btn-spin');
-          btn.textContent=d.spin;
-          btn.className='btn-spin '+d.spin;
-          var tbody=document.getElementById('speeds-body');
-          tbody.innerHTML='';
-          for(var i=1;i<=8;i++){
-            var tr=document.createElement('tr');
-            tr.innerHTML='<td class="idx">'+i+'</td><td>'+d.up[i]+'</td><td>'+d.down[i]+'</td>';
-            tbody.appendChild(tr);
-          }
-        }).catch(()=>{document.getElementById('status').textContent='error';});
-    }
-    function toggleSpin(){
-      fetch('/mute').then(()=>poll()).catch(()=>{});
-    }
-    poll();
-  </script>
+<script>
+var mainIdx=0, suppIdx=0, currentSpin='TOPSPIN';
+
+function toggleSpin(){
+  fetch('/setspin')
+    .then(r=>r.text())
+    .then(t=>{
+      poll();
+    })
+    .catch(e=>console.log(e));
+}
+
+function poll(){
+  fetch('/mstatus')
+    .then(r=>r.json())
+    .then(d=>{
+      currentSpin=d.spin;
+      document.getElementById('spin-btn').textContent=currentSpin;
+      document.getElementById('main-val').textContent=d.main_speed||'-';
+      document.getElementById('supp-val').textContent=d.support_speed||'-';
+      var tbody=document.getElementById('speeds-body');
+      tbody.innerHTML='';
+      for(var i=1;i<=8;i++){
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td class="idx">'+i+'</td><td>'+d.up[i]+'</td><td>'+d.down[i]+'</td>';
+        tbody.appendChild(tr);
+      }
+      // Disable P buttons in NOSPIN mode
+      var isNospin = (d.spin === 'NOSPIN');
+      document.getElementById('pup-btn').disabled = isNospin;
+      document.getElementById('pdown-btn').disabled = isNospin;
+      document.getElementById('t2-btn').disabled = isNospin;
+      if(isNospin){
+        document.getElementById('pup-btn').style.opacity='0.5';
+        document.getElementById('pdown-btn').style.opacity='0.5';
+        document.getElementById('t2-btn').style.opacity='0.5';
+      }else{
+        document.getElementById('pup-btn').style.opacity='1';
+        document.getElementById('pdown-btn').style.opacity='1';
+        document.getElementById('t2-btn').style.opacity='1';
+      }
+    }).catch(e=>document.getElementById('status').textContent='error');
+}
+
+function incMain(){
+  fetch('/vup').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function decMain(){
+  fetch('/vdown').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function incSupp(){
+  fetch('/pup').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function decSupp(){
+  fetch('/pdown').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function saveMain(){
+  fetch('/t1save').then(r=>r.text()).then(t=>document.getElementById('status').textContent=t).catch(e=>document.getElementById('status').textContent='error');
+  setTimeout(poll, 500);
+}
+
+function saveSupp(){
+  fetch('/t2save').then(r=>r.text()).then(t=>document.getElementById('status').textContent=t).catch(e=>document.getElementById('status').textContent='error');
+  setTimeout(poll, 500);
+}
+
+poll();
+</script>
 </body>
 </html>
 )rawhtml";
@@ -620,6 +706,13 @@ void WebControl::_register_routes()
   _server.on("/setlimits",     HTTP_GET, _s_setlimits);
   _server.on("/motorsettings", HTTP_GET, _s_motorsettings);
   _server.on("/mstatus",       HTTP_GET, _s_mstatus);
+  _server.on("/t1save",        HTTP_GET, _s_t1save);
+  _server.on("/t2save",        HTTP_GET, _s_t2save);
+  _server.on("/setspin",       HTTP_GET, _s_setspin);
+  _server.on("/vup",           HTTP_GET, _s_vup);
+  _server.on("/vdown",         HTTP_GET, _s_vdown);
+  _server.on("/pup",           HTTP_GET, _s_pup);
+  _server.on("/pdown",         HTTP_GET, _s_pdown);
   _server.on("/panmin",  HTTP_GET, _s_panmin);
   _server.on("/panmax",  HTTP_GET, _s_panmax);
   _server.on("/tiltmin", HTTP_GET, _s_tiltmin);
@@ -791,35 +884,266 @@ void WebControl::_handle_motorsettings()
 void WebControl::_handle_mstatus()
 {
   String spin;
-  if      (motor_up.spin == Brush::TOPSPIN)  spin = "TOPSPIN";
-  else if (motor_up.spin == Brush::SUPPORT)  spin = "BACKSPIN";
-  else if (motor_up.spin == Brush::NOSPIN)   spin = "NOSPIN";
-  else                                        spin = "TOPSPIN";
+  Brush* mainMotor = NULL;
+  Brush* supportMotor = NULL;
+  
+  // Identify spin mode and get main/support motor pointers
+  if (motor_up.spin == Brush::TOPSPIN) {
+    spin = "TOPSPIN";
+    mainMotor = &motor_up;
+    supportMotor = &motor_down;
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN mode
+    spin = "BACKSPIN";
+    mainMotor = &motor_down;
+    supportMotor = &motor_up;
+  } else if (motor_up.spin == Brush::NOSPIN) {
+    spin = "NOSPIN";
+    mainMotor = &motor_up;
+    supportMotor = &motor_down;
+  } else {
+    spin = "TOPSPIN";
+    mainMotor = &motor_up;
+    supportMotor = &motor_down;
+  }
 
   char buffer[1024] = {0};
   
-  // Build JSON with sprintf to avoid String fragmentation (18+ allocations reduced to 1)
-  sprintf(buffer, "{\"spin\":\"%s\",\"up\":[" , spin.c_str());
+  // Build JSON with MAIN/SUPPORT speeds (not motor_up/motor_down fixed!)
+  sprintf(buffer, "{\"spin\":\"%s\",\"main_speed\":%d,\"support_speed\":%d,\"up\":[" , 
+          spin.c_str(), mainMotor->speed, supportMotor->speed);
   
-  // Append UP array
+  // Append MAIN motor speeds array
   for (int i = 0; i < 9; i++) {
     char num[10];
-    sprintf(num, "%d", motor_up._SPEEDS[i]);
+    sprintf(num, "%d", mainMotor->_SPEEDS[i]);
     strcat(buffer, num);
     if (i < 8) strcat(buffer, ",");
   }
   strcat(buffer, "],\"down\":[" );
   
-  // Append DOWN array
+  // Append SUPPORT motor speeds array
   for (int i = 0; i < 9; i++) {
     char num[10];
-    sprintf(num, "%d", motor_down._SPEEDS[i]);
+    sprintf(num, "%d", supportMotor->_SPEEDS[i]);
     strcat(buffer, num);
     if (i < 8) strcat(buffer, ",");
   }
   strcat(buffer, "]}");
   
   _server.send(200, "application/json", buffer);
+}
+
+void WebControl::_handle_t1save()
+{
+  // Save MAIN motor speed configuration (like T1 button on remote)
+  // Identify main motor based on spin mode
+  Brush* mainMotor = &motor_up; // default TOPSPIN/NOSPIN
+  uint8_t spinMode = Brush::TOPSPIN;
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    mainMotor = &motor_up;
+    spinMode = Brush::TOPSPIN;
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN: motor_down is MAIN
+    mainMotor = &motor_down;
+    spinMode = Brush::BACKSPIN;
+  } else if (motor_up.spin == Brush::NOSPIN) {
+    mainMotor = &motor_up;
+    spinMode = Brush::NOSPIN;
+  }
+  
+  // Update _SPEEDS array based on current spin mode
+  if (spinMode == Brush::TOPSPIN) {
+    mainMotor->update_speeds(mainMotor->_SPEEDS, mainMotor->speed, "TOPSPIN", MOTOR_STEP);
+  } else if (spinMode == Brush::BACKSPIN) {
+    mainMotor->update_speeds(mainMotor->_SPEEDS, mainMotor->speed, "BACKSPIN", MOTOR_STEP);
+  } else if (spinMode == Brush::NOSPIN) {
+    mainMotor->update_speeds_nospin(mainMotor->_SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
+  }
+  
+  // Save to NVS and reload
+  mainMotor->save_data_as();
+  mainMotor->load_data_as();
+  
+  // Display OK sign on LED matrix
+  display.displayImage_async(IMAGES[12], 1); // ok save
+  
+  _server.send(200, "text/plain", "Main motor saved");
+}
+
+void WebControl::_handle_t2save()
+{
+  // Save SUPPORT motor speed configuration (like T2 button on remote)
+  // Identify support motor based on spin mode
+  Brush* supportMotor = &motor_down; // default TOPSPIN/NOSPIN
+  uint8_t spinMode = Brush::TOPSPIN;
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    supportMotor = &motor_down;
+    spinMode = Brush::TOPSPIN;
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN: motor_up is SUPPORT
+    supportMotor = &motor_up;
+    spinMode = Brush::BACKSPIN;
+  } else if (motor_up.spin == Brush::NOSPIN) {
+    supportMotor = &motor_down;
+    spinMode = Brush::NOSPIN;
+  }
+  
+  // Update _SPEEDS array based on current spin mode
+  if (spinMode == Brush::TOPSPIN) {
+    supportMotor->update_speeds(supportMotor->_SPEEDS, supportMotor->speed, "SUPPORT", SUPPORT_STEP);
+  } else if (spinMode == Brush::BACKSPIN) {
+    supportMotor->update_speeds(supportMotor->_SPEEDS, supportMotor->speed, "SUPPORT", SUPPORT_STEP);
+  } else if (spinMode == Brush::NOSPIN) {
+    // NOSPIN: T2 is disabled anyway, but handle gracefully
+    supportMotor->update_speeds(supportMotor->_SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
+  }
+  
+  // Save to NVS and reload
+  supportMotor->save_data_as();
+  supportMotor->load_data_as();
+  
+  // Display OK sign on LED matrix
+  display.displayImage_async(IMAGES[12], 1); // ok save
+  
+  _server.send(200, "text/plain", "Support motor saved");
+}
+
+void WebControl::_handle_setspin()
+{
+  // Change spin mode - mirrors _TMute() from infr_motor.h
+  // MUTE button: stop_motors() + toggle_spin()
+  
+  // Stop motors first
+  feeder.index = 0;
+  feeder.enable = false;
+  motor_down.index = 0;
+  motor_up.index = 0;
+  motor_up.speed = motor_up._SPEEDS[motor_up.index];
+  motor_down.speed = motor_down._SPEEDS[motor_down.index];
+  motor_down.set_speed();
+  motor_up.set_speed();
+  
+  // Toggle spin mode: T->B->N->T
+  if (motor_up.spin == Brush::TOPSPIN) {
+    motor_up.spin = Brush::SUPPORT;
+    motor_down.spin = Brush::BACKSPIN;
+    motor_up.set_spin(Brush::SUPPORT);
+    motor_down.set_spin(Brush::BACKSPIN);
+    display.displayImage_async(IMAGES[12], 0.5); // Display on LED
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    motor_up.spin = Brush::NOSPIN;
+    motor_down.spin = Brush::NOSPIN;
+    motor_up.set_spin(Brush::NOSPIN);
+    motor_down.set_spin(Brush::NOSPIN);
+    display.displayImage_async(IMAGES[12], 0.5);
+  } else {
+    motor_up.spin = Brush::TOPSPIN;
+    motor_down.spin = Brush::SUPPORT;
+    motor_up.set_spin(Brush::TOPSPIN);
+    motor_down.set_spin(Brush::SUPPORT);
+    display.displayImage_async(IMAGES[12], 0.5);
+  }
+  
+  // Load speeds from NVS for the new spin mode
+  motor_up.load_data_as();
+  motor_down.load_data_as();
+  
+  _server.send(200, "text/plain", "Spin toggled");
+}
+
+void WebControl::_handle_vup()
+{
+  // V+ button: increase MAIN motor speed (V+/V- logic from infr_motor.h)
+  // TOPSPIN: motor_up = main, use MOTOR_STEP_SETUP
+  // BACKSPIN: motor_down = main, use MOTOR_STEP_SETUP
+  // NOSPIN: both motors synchronized from main control
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    motor_up.increase_speed(MOTOR_STEP_SETUP);
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN case
+    motor_down.increase_speed(MOTOR_STEP_SETUP);
+  } else {
+    // NOSPIN case: both motors controlled together
+    motor_up.increase_speed(SUPPORT_STEP_SETUP);
+    motor_down.increase_speed(SUPPORT_STEP_SETUP);
+  }
+  
+  display.displayImage_async(IMAGES[10], 0.5);
+  _server.send(200, "text/plain", "V+");
+}
+
+void WebControl::_handle_vdown()
+{
+  // V- button: decrease MAIN motor speed (V+/V- logic from infr_motor.h)
+  // TOPSPIN: motor_up = main, use MOTOR_STEP_SETUP
+  // BACKSPIN: motor_down = main, use MOTOR_STEP_SETUP
+  // NOSPIN: both motors synchronized from main control
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    motor_up.decrease_speed(MOTOR_STEP_SETUP);
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN case
+    motor_down.decrease_speed(MOTOR_STEP_SETUP);
+  } else {
+    // NOSPIN case: both motors controlled together
+    motor_up.decrease_speed(SUPPORT_STEP_SETUP);
+    motor_down.decrease_speed(SUPPORT_STEP_SETUP);
+  }
+  
+  display.displayImage_async(IMAGES[8], 0.2);
+  _server.send(200, "text/plain", "V-");
+}
+
+void WebControl::_handle_pup()
+{
+  // P+ button: increase SUPPORT motor speed (P+/P- logic from infr_motor.h)
+  // TOPSPIN: motor_down = support
+  // BACKSPIN: motor_up = support
+  // NOSPIN: DISABLED - support controls inactive
+  
+  if (motor_up.spin == Brush::NOSPIN) {
+    // NOSPIN: P controls are disabled
+    _server.send(200, "text/plain", "P+ disabled (NOSPIN mode)");
+    return;
+  }
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    motor_down.increase_speed(SUPPORT_STEP_SETUP);
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN case
+    motor_up.increase_speed(SUPPORT_STEP_SETUP);
+  }
+  
+  display.displayImage_async(IMAGES[10], 0.2);
+  _server.send(200, "text/plain", "P+");
+}
+
+void WebControl::_handle_pdown()
+{
+  // P- button: decrease SUPPORT motor speed (P+/P- logic from infr_motor.h)
+  // TOPSPIN: motor_down = support
+  // BACKSPIN: motor_up = support
+  // NOSPIN: DISABLED - support controls inactive
+  
+  if (motor_up.spin == Brush::NOSPIN) {
+    // NOSPIN: P controls are disabled
+    _server.send(200, "text/plain", "P- disabled (NOSPIN mode)");
+    return;
+  }
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    motor_down.decrease_speed(SUPPORT_STEP_SETUP);
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    // BACKSPIN case
+    motor_up.decrease_speed(SUPPORT_STEP_SETUP);
+  }
+  
+  display.displayImage_async(IMAGES[8], 0.2);
+  _server.send(200, "text/plain", "P-");
 }
 
 void WebControl::_handle_setlimits()
