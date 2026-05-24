@@ -32,7 +32,7 @@ class infr_motor: public infrared_template_empty
       motor_up.load_data_as(); // load and report
       
       display.displayImage_async(IMAGES[12],1); // ok save
-      show_display_status();
+      // NO show_display_status() - avoid conflict with async display
       
     }
 
@@ -52,7 +52,7 @@ class infr_motor: public infrared_template_empty
       motor_down.load_data_as();
       
       display.displayImage_async(IMAGES[12],1); // ok save
-      show_display_status();
+      // NO show_display_status() - avoid conflict with async display
       
     }
 
@@ -62,7 +62,7 @@ class infr_motor: public infrared_template_empty
     motor_up.check_data(false);
     motor_down.check_data(false);
     display.displayImage_async(IMAGES[12],1); // ok save
-
+    // NO show_display_status() - avoid conflict with async display
   }  
   
   void _T4() override
@@ -106,29 +106,47 @@ class infr_motor: public infrared_template_empty
     
   }
   
+  // ────────────────────────────────────────────────────────────────
+  // Helper functions for motor control
+  // ────────────────────────────────────────────────────────────────
+  private:
+  // Returns pointer to main-spin motor (controlled by V+/V-)
+  // TOPSPIN → motor_up, BACKSPIN → motor_down, else → motor_up
+  Brush* getMainMotor() {
+    if(motor_up.spin == Brush::TOPSPIN) return &motor_up;
+    if(motor_down.spin == Brush::BACKSPIN) return &motor_down;
+    return &motor_up; // default NOSPIN
+  }
+  
+  // Returns step size for main motor
+  // TOPSPIN/BACKSPIN use MOTOR_STEP_SETUP, NOSPIN uses SUPPORT_STEP_SETUP
+  int getMainStep() {
+    if(motor_up.spin == Brush::TOPSPIN || motor_down.spin == Brush::BACKSPIN)
+      return MOTOR_STEP_SETUP;
+    return SUPPORT_STEP_SETUP;
+  }
+  
+  // Returns pointer to support motor (controlled by P+/P-)
+  // Inverse of main motor: if motor_down has SUPPORT → motor_down,
+  // if motor_up has SUPPORT → motor_up, else → motor_down
+  Brush* getSupportMotor() {
+    if(motor_down.spin == Brush::SUPPORT) return &motor_down;
+    if(motor_up.spin == Brush::SUPPORT) return &motor_up;
+    return &motor_down; // default NOSPIN
+  }
+  
+  public:
   // V+/V- controls the main-spin motor:
   //   TOPSPIN cycle (motor_up=TOPSPIN, motor_down=SUPPORT) → motor_up
   //   BACKSPIN cycle (motor_up=SUPPORT, motor_down=BACKSPIN) → motor_down
   //   NOSPIN cycle → motor_up (default)
-  void virtual _VUP()
-  {
-    if (motor_up.spin == Brush::TOPSPIN)
-      motor_up.increase_speed(MOTOR_STEP_SETUP);
-    else if (motor_down.spin == Brush::BACKSPIN)
-      motor_down.increase_speed(MOTOR_STEP_SETUP);
-    else
-      motor_up.increase_speed(SUPPORT_STEP_SETUP); // NOSPIN
+  void virtual _VUP() {
+    getMainMotor()->increase_speed(getMainStep());
     display.displayImage_async(IMAGES[10], 0.5);
   }
 
-  void virtual _VDOWN()
-  {
-    if (motor_up.spin == Brush::TOPSPIN)
-      motor_up.decrease_speed(MOTOR_STEP_SETUP);
-    else if (motor_down.spin == Brush::BACKSPIN)
-      motor_down.decrease_speed(MOTOR_STEP_SETUP);
-    else
-      motor_up.decrease_speed(SUPPORT_STEP_SETUP); // NOSPIN
+  void virtual _VDOWN() {
+    getMainMotor()->decrease_speed(getMainStep());
     display.displayImage_async(IMAGES[8], 0.2);
   }
 
@@ -136,25 +154,13 @@ class infr_motor: public infrared_template_empty
   //   TOPSPIN cycle → motor_down (support)
   //   BACKSPIN cycle → motor_up (support)
   //   NOSPIN cycle → motor_down (default)
-  void virtual _PUP()
-  {
-    if (motor_down.spin == Brush::SUPPORT)
-      motor_down.increase_speed(SUPPORT_STEP_SETUP);
-    else if (motor_up.spin == Brush::SUPPORT)
-      motor_up.increase_speed(SUPPORT_STEP_SETUP);
-    else
-      motor_down.increase_speed(SUPPORT_STEP_SETUP); // NOSPIN
+  void virtual _PUP() {
+    getSupportMotor()->increase_speed(SUPPORT_STEP_SETUP);
     display.displayImage_async(IMAGES[10], 0.2);
   }
 
-  void virtual _PDOWN()
-  {
-    if (motor_down.spin == Brush::SUPPORT)
-      motor_down.decrease_speed(SUPPORT_STEP_SETUP);
-    else if (motor_up.spin == Brush::SUPPORT)
-      motor_up.decrease_speed(SUPPORT_STEP_SETUP);
-    else
-      motor_down.decrease_speed(SUPPORT_STEP_SETUP); // NOSPIN
+  void virtual _PDOWN() {
+    getSupportMotor()->decrease_speed(SUPPORT_STEP_SETUP);
     display.displayImage_async(IMAGES[8], 0.2);
   }
 
