@@ -168,17 +168,15 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>document.getElementById('status').textContent='error');
     }
     function mMotor1(delta){
-      var cur=parseInt(document.getElementById('m1val').textContent)||0;
-      var nv=Math.min(8,Math.max(0,cur+delta));
-      fetch('/motor1?v='+nv)
+      var url=(delta>0)?'/motor1/up':'/motor1/down';
+      fetch(url)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
         .catch(()=>document.getElementById('status').textContent='error');
     }
     function mMotor2(delta){
-      var cur=parseInt(document.getElementById('m2val').textContent)||0;
-      var nv=Math.min(8,Math.max(0,cur+delta));
-      fetch('/motor2?v='+nv)
+      var url=(delta>0)?'/motor2/up':'/motor2/down';
+      fetch(url)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
         .catch(()=>document.getElementById('status').textContent='error');
@@ -218,8 +216,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           var m2col=document.getElementById('m2col');
           m2col.style.opacity=nospin?'0.3':'1';
           m2col.style.pointerEvents=nospin?'none':'auto';
-          document.getElementById('m1val').textContent=d.m1;
-          document.getElementById('m2val').textContent=nospin?d.m1:d.m2;
+          document.getElementById('m1val').textContent=(d.m1_vpos!==undefined?d.m1_vpos:d.m1);
+          document.getElementById('m2val').textContent=nospin?(d.m1_vpos!==undefined?d.m1_vpos:d.m1):(d.m2_vpos!==undefined?d.m2_vpos:d.m2);
           var motorsOff=(d.m1===0 && d.m2===0);
           var frow=document.getElementById('f-row');
           frow.style.opacity=motorsOff?'0.3':'1';
@@ -801,7 +799,11 @@ void WebControl::_register_routes()
   _server.on("/power",  HTTP_GET, _s_power);
   _server.on("/mute",   HTTP_GET, _s_mute);
   _server.on("/motor1",   HTTP_GET, _s_motor1);
+  _server.on("/motor1/up", HTTP_GET, _s_motor1_up);
+  _server.on("/motor1/down", HTTP_GET, _s_motor1_down);
   _server.on("/motor2",   HTTP_GET, _s_motor2);
+  _server.on("/motor2/up", HTTP_GET, _s_motor2_up);
+  _server.on("/motor2/down", HTTP_GET, _s_motor2_down);
   _server.on("/feeder",   HTTP_GET, _s_feeder);
   _server.on("/savepos",    HTTP_GET, _s_savepos);
   _server.on("/home",       HTTP_GET, _s_home);
@@ -1348,6 +1350,85 @@ void WebControl::_handle_motor2()
   _server.send(200, "text/plain", "M2 OK");
 }
 
+void WebControl::_handle_motor1_up()
+{
+  // Increment main motor speed; increase_speed() handles proper step size
+  // TOPSPIN: MOTOR_STEP, BACKSPIN: MOTOR_STEP, NOSPIN: MOTOR_STEP/2
+  if (motor_up.spin == Brush::TOPSPIN)
+    motor_up.increase_speed();
+  else if (motor_up.spin == Brush::SUPPORT)
+    motor_down.increase_speed();
+  else // NOSPIN: both synchronized
+  {
+    motor_up.increase_speed();
+    motor_down.increase_speed();
+  }
+  if (motor_up.index == 0 && motor_down.index == 0)
+  {
+    feeder.index = 0;
+    feeder.stop();
+  }
+  display.status(motor_up.index, motor_down.index, feeder.index);
+  _server.send(200, "text/plain", "M1 UP OK");
+}
+
+void WebControl::_handle_motor1_down()
+{
+  // Decrement main motor speed; decrease_speed() handles proper step size
+  if (motor_up.spin == Brush::TOPSPIN)
+    motor_up.decrease_speed();
+  else if (motor_up.spin == Brush::SUPPORT)
+    motor_down.decrease_speed();
+  else // NOSPIN: both synchronized
+  {
+    motor_up.decrease_speed();
+    motor_down.decrease_speed();
+  }
+  if (motor_up.index == 0 && motor_down.index == 0)
+  {
+    feeder.index = 0;
+    feeder.stop();
+  }
+  display.status(motor_up.index, motor_down.index, feeder.index);
+  _server.send(200, "text/plain", "M1 DOWN OK");
+}
+
+void WebControl::_handle_motor2_up()
+{
+  // Increment support motor speed; increase_speed() uses SUPPORT_STEP
+  if (motor_up.spin == Brush::TOPSPIN)
+    motor_down.increase_speed();
+  else if (motor_up.spin == Brush::SUPPORT)
+    motor_up.increase_speed();
+  // NOSPIN: P buttons inactive, do nothing
+  
+  if (motor_up.index == 0 && motor_down.index == 0)
+  {
+    feeder.index = 0;
+    feeder.stop();
+  }
+  display.status(motor_up.index, motor_down.index, feeder.index);
+  _server.send(200, "text/plain", "M2 UP OK");
+}
+
+void WebControl::_handle_motor2_down()
+{
+  // Decrement support motor speed; decrease_speed() uses SUPPORT_STEP
+  if (motor_up.spin == Brush::TOPSPIN)
+    motor_down.decrease_speed();
+  else if (motor_up.spin == Brush::SUPPORT)
+    motor_up.decrease_speed();
+  // NOSPIN: P buttons inactive, do nothing
+  
+  if (motor_up.index == 0 && motor_down.index == 0)
+  {
+    feeder.index = 0;
+    feeder.stop();
+  }
+  display.status(motor_up.index, motor_down.index, feeder.index);
+  _server.send(200, "text/plain", "M2 DOWN OK");
+}
+
 void WebControl::_handle_feeder()
 {
   if (_server.hasArg("v"))
@@ -1399,16 +1480,21 @@ void WebControl::_handle_status()
   // → swap m1/m2 in status ca sliderele sa reflecte ce controleaza
   int m1idx = motor_up.index;
   int m2idx = motor_down.index;
+  float m1_vpos = motor_up.getVirtualPosition();
+  float m2_vpos = motor_down.getVirtualPosition();
   if (motor_up.spin == Brush::SUPPORT) // BACKSPIN cycle
   {
     m1idx = motor_down.index;
     m2idx = motor_up.index;
+    m1_vpos = motor_down.getVirtualPosition();
+    m2_vpos = motor_up.getVirtualPosition();
   }
 
   char buffer[512] = {0};
   // Build JSON with sprintf - includes firmware version for OTA detection
-  sprintf(buffer, "{\"spin\":\"%s\",\"m1\":%d,\"m2\":%d,\"f\":%d,\"pan\":%d,\"pan_min\":%d,\"pan_max\":%d,\"tilt\":%d,\"tilt_min\":%d,\"tilt_max\":%d,\"step\":%d,\"version\":\"%s\"}",
-          spin.c_str(), m1idx, m2idx, feeder.index, 
+  // m1_vpos, m2_vpos: virtual positions 0-8 with decimal precision
+  sprintf(buffer, "{\"spin\":\"%s\",\"m1\":%d,\"m2\":%d,\"m1_vpos\":%.1f,\"m2_vpos\":%.1f,\"f\":%d,\"pan\":%d,\"pan_min\":%d,\"pan_max\":%d,\"tilt\":%d,\"tilt_min\":%d,\"tilt_max\":%d,\"step\":%d,\"version\":\"%s\"}",
+          spin.c_str(), m1idx, m2idx, m1_vpos, m2_vpos, feeder.index, 
           pan.read_pos(), pan.min_value, pan.max_value,
           tilt.read_pos(), tilt.min_value, tilt.max_value,
           servo_step, FW_VERSION);

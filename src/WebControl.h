@@ -37,7 +37,11 @@ private:
   void _handle_power();
   void _handle_mute();
   void _handle_motor1();
+  void _handle_motor1_up();
+  void _handle_motor1_down();
   void _handle_motor2();
+  void _handle_motor2_up();
+  void _handle_motor2_down();
   void _handle_feeder();
   void _handle_savepos();
   void _handle_home();
@@ -76,7 +80,11 @@ private:
   static void _s_power()  { _instance->_handle_power(); }
   static void _s_mute()   { _instance->_handle_mute(); }
   static void _s_motor1()   { _instance->_handle_motor1(); }
+  static void _s_motor1_up() { _instance->_handle_motor1_up(); }
+  static void _s_motor1_down() { _instance->_handle_motor1_down(); }
   static void _s_motor2()   { _instance->_handle_motor2(); }
+  static void _s_motor2_up() { _instance->_handle_motor2_up(); }
+  static void _s_motor2_down() { _instance->_handle_motor2_down(); }
   static void _s_feeder()   { _instance->_handle_feeder(); }
   static void _s_savepos()  { _instance->_handle_savepos(); }
   static void _s_home()     { _instance->_handle_home(); }

@@ -458,3 +458,19 @@ void Brush::reporting()
   
   
 }
+
+float Brush::getVirtualPosition()
+{
+  // Returns virtual position 0.0-8.0 with decimal interpolation
+  if (index == 0) return 0.0f;
+  if (index >= 8) return 8.0f;
+  
+  uint16_t lower = _SPEEDS[index];
+  uint16_t upper = _SPEEDS[index + 1];
+  
+  if (speed <= lower) return (float)index;
+  if (speed >= upper) return (float)(index + 1);
+  
+  float frac = (float)(speed - lower) / (float)(upper - lower);
+  return (float)index + frac;
+}

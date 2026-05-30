@@ -78,6 +78,7 @@ void set_speed2(uint16_t ispeed);
 void set_spin(uint8_t _spin);
 void increase_speed(uint8_t val);
 void decrease_speed(uint8_t val);
+float getVirtualPosition();  // Returns position 0.0-8.0 with decimal precision
 
 
 
