@@ -71,7 +71,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div class="card">
     <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px">
-      <button onclick="confirmSavePos()" style="border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">&#128190;</button>
+      <button onclick="confirmSavePos()" style="display:none;border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">&#128190;</button>
       <button id="btn-step" onclick="toggleStep()" style="border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">6&#176;</button>
     </div>
     <div class="grid">
@@ -371,13 +371,63 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
                        font-size:15px;font-weight:bold;cursor:pointer}
     .btn-ok{background:#e94560;color:#eee}
     .btn-cancel{background:#0f3460;color:#aaa}
+    .dpad{width:100%;height:100%;font-size:24px;border:none;border-radius:10px;
+          background:#0f3460;color:#e94560;cursor:pointer;box-shadow:0 4px 8px #0005;
+          display:flex;align-items:center;justify-content:center;flex-direction:column;
+          line-height:1.2;padding:0}
+    .dpad:active{transform:scale(.92);background:#e94560;color:#fff}
+    .dpad-mm{font-size:13px;font-weight:bold;color:#aaa;background:#0a2040}
+    .dpad-mm:active{background:#e94560;color:#fff}
+    .dgrid{display:grid;grid-template-columns:repeat(5,1fr);
+           grid-template-rows:repeat(5,58px);gap:6px}
+    .dempty{background:transparent;pointer-events:none}
   </style>
 </head>
 <body>
   <h2>&#9881; Settings</h2>
 
   <div class="card">
-    <div style="font-size:12px;color:#aaa;margin-bottom:8px;font-weight:bold;letter-spacing:1px">PAN</div>
+    <div class="dgrid">
+      <!-- row 0 -->
+      <button class="dpad" onclick="sConfirmSavePos()" title="Save pos">&#128190;</button>
+      <div class="dempty"></div>
+      <button class="dpad dpad-mm" onclick="sCmd('tiltmax')">Max<br>&#9650;</button>
+      <div class="dempty"></div>
+      <button class="dpad" id="s-step-btn" onclick="sToggleStep()">6&#176;</button>
+      <!-- row 1 -->
+      <div class="dempty"></div>
+      <div class="dempty"></div>
+      <button class="dpad" onclick="sCmd('up')">&#9650;</button>
+      <div class="dempty"></div>
+      <div class="dempty"></div>
+      <!-- row 2 -->
+      <button class="dpad dpad-mm" onclick="sCmd('panmin')">&#9664;<br>Min</button>
+      <button class="dpad" onclick="sCmd('left')">&#9664;</button>
+      <button class="dpad" onclick="sCmd('home')" style="font-size:20px">&#127968;</button>
+      <button class="dpad" onclick="sCmd('right')">&#9654;</button>
+      <button class="dpad dpad-mm" onclick="sCmd('panmax')">Max<br>&#9654;</button>
+      <!-- row 3 -->
+      <div class="dempty"></div>
+      <div class="dempty"></div>
+      <button class="dpad" onclick="sCmd('down')">&#9660;</button>
+      <div class="dempty"></div>
+      <div class="dempty"></div>
+      <!-- row 4 -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none">
+        <span style="font-size:10px;color:#aaa">PAN</span>
+        <span id="s-pan-val" style="font-size:20px;color:#e94560;font-weight:bold">-</span>
+      </div>
+      <div class="dempty"></div>
+      <button class="dpad dpad-mm" onclick="sCmd('tiltmin')">&#9660;<br>Min</button>
+      <div class="dempty"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none">
+        <span style="font-size:10px;color:#aaa">TILT</span>
+        <span id="s-tilt-val" style="font-size:20px;color:#e94560;font-weight:bold">-</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="grid">
       <div></div>
       <div class="col-hdr">min</div>
@@ -385,37 +435,34 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
       <div class="row-lbl">pan</div>
       <input type="number" id="pan_min" min="0" max="90" value="5">
       <input type="number" id="pan_max" min="0" max="90" value="50">
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-      <button class="btn" style="background:#0f3460;font-size:14px" onclick="gotoLimit('pan','min')">&#9664; min</button>
-      <button class="btn" style="background:#0f3460;font-size:14px" onclick="gotoLimit('pan','max')">max &#9654;</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div style="font-size:12px;color:#aaa;margin-bottom:8px;font-weight:bold;letter-spacing:1px">TILT</div>
-    <div class="grid">
-      <div></div>
-      <div class="col-hdr">min</div>
-      <div class="col-hdr">max</div>
       <div class="row-lbl">tilt</div>
       <input type="number" id="tilt_min" min="0" max="90" value="5">
       <input type="number" id="tilt_max" min="0" max="90" value="50">
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-      <button class="btn" style="background:#0f3460;font-size:14px" onclick="gotoLimit('tilt','min')">&#9660; min</button>
-      <button class="btn" style="background:#0f3460;font-size:14px" onclick="gotoLimit('tilt','max')">max &#9650;</button>
+      <div></div>
+      <div></div>
+      <button class="btn btn-save" style="padding:10px" onclick="confirmSave()">&#128190; Save</button>
     </div>
   </div>
 
-  <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px">
-    <button class="btn btn-save" onclick="confirmSave()">&#128190; Salveaza</button>
+  <div style="width:100%;max-width:340px">
     <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
   </div>
 
   <div id="status">Se incarca...</div>
 
-  <!-- confirm modal -->
+  <!-- confirm modal save pos -->
+  <div id="modal-pos" style="display:none;position:fixed;inset:0;background:#0008;
+       z-index:1000;align-items:center;justify-content:center">
+    <div class="modal-box">
+      <p>Salvezi pozitia curenta PAN/TILT ca pozitie HOME?</p>
+      <div class="modal-btns">
+        <button class="btn-ok" onclick="sPosOk()">Da</button>
+        <button class="btn-cancel" onclick="sPosCancel()">Nu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- confirm modal save limits -->
   <div id="modal">
     <div class="modal-box">
       <p>Salvezi limitele PAN/TILT?</p>
@@ -436,6 +483,17 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
       document.getElementById('tilt_max').value=v.tilt_max;
     }
 
+    function sPollPos(){
+      fetch('/status')
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.pan!==undefined)  document.getElementById('s-pan-val').textContent=d.pan;
+          if(d.tilt!==undefined) document.getElementById('s-tilt-val').textContent=d.tilt;
+        }).catch(()=>{});
+    }
+    var sPollInterval=setInterval(sPollPos,500);
+    window.addEventListener('beforeunload',function(){clearInterval(sPollInterval);});
+
     fetch('/status')
       .then(r=>r.json())
       .then(d=>{
@@ -444,7 +502,10 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
         if(d.tilt_min!==undefined) saved.tilt_min=d.tilt_min;
         if(d.tilt_max!==undefined) saved.tilt_max=d.tilt_max;
         applyValues(saved);
+        if(d.pan!==undefined)  document.getElementById('s-pan-val').textContent=d.pan;
+        if(d.tilt!==undefined) document.getElementById('s-tilt-val').textContent=d.tilt;
         document.getElementById('status').textContent='ready';
+        if(d.step!==undefined) document.getElementById('s-step-btn').textContent=d.step+'°';
       }).catch(()=>{document.getElementById('status').textContent='error loading';});
 
     function confirmSave(){
@@ -466,6 +527,44 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
     }
     function closeModal()  { document.getElementById('modal').classList.remove('show'); }
 
+    function sConfirmSavePos(){
+      var m=document.getElementById('modal-pos');
+      m.style.display='flex';
+    }
+    function sPosOk(){
+      document.getElementById('modal-pos').style.display='none';
+      clearInterval(sPollInterval);
+      fetch('/savepos')
+        .then(r=>r.text())
+        .then(t=>{
+          document.getElementById('status').textContent=t;
+          document.getElementById('s-pan-val').textContent='\u2714';
+          document.getElementById('s-tilt-val').textContent='\u2714';
+          setTimeout(function(){
+            sPollInterval=setInterval(sPollPos,500);
+            sPollPos();
+          },1000);
+        })
+        .catch(()=>{
+          document.getElementById('status').textContent='error save';
+          sPollInterval=setInterval(sPollPos,500);
+        });
+    }
+    function sPosCancel(){
+      document.getElementById('modal-pos').style.display='none';
+    }
+    function sCmd(action){
+      fetch('/'+action)
+        .then(r=>r.text())
+        .then(t=>document.getElementById('status').textContent=t)
+        .catch(()=>document.getElementById('status').textContent='error');
+    }
+    function sToggleStep(){
+      fetch('/step')
+        .then(r=>r.json())
+        .then(d=>document.getElementById('s-step-btn').textContent=d.step+'°')
+        .catch(()=>{});
+    }
     function gotoLimit(axis,lim){
       fetch('/'+axis+lim)
         .then(r=>r.text())
@@ -713,8 +812,8 @@ void WebControl::_register_routes()
   _server.on("/vdown",         HTTP_GET, _s_vdown);
   _server.on("/pup",           HTTP_GET, _s_pup);
   _server.on("/pdown",         HTTP_GET, _s_pdown);
-  _server.on("/panmin",  HTTP_GET, _s_panmin);
-  _server.on("/panmax",  HTTP_GET, _s_panmax);
+  _server.on("/panmin",  HTTP_GET, _s_panmax); // changed bedause servo moves in opposite direction of command, so panmin command moves to max position and vice versa 
+  _server.on("/panmax",  HTTP_GET, _s_panmin); // changed bedause servo moves in opposite direction of command, so panmin command moves to max position and vice versa 
   _server.on("/tiltmin", HTTP_GET, _s_tiltmin);
   _server.on("/tiltmax", HTTP_GET, _s_tiltmax);
   _server.on("/firmware", HTTP_GET, _s_firmware);
@@ -1270,6 +1369,8 @@ void WebControl::_handle_savepos()
 {
   pan.save_pos((uint8_t)pan.read_pos());
   tilt.save_pos((uint8_t)tilt.read_pos());
+  pan.init_value  = (uint8_t)pan.read_pos();
+  tilt.init_value = (uint8_t)tilt.read_pos();
   _server.send(200, "text/plain", "POS SAVED");
 }
 
