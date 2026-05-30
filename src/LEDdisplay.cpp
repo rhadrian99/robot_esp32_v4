@@ -64,11 +64,12 @@ void LEDdisplay::update() {
   unsigned long elapsed = millis() - _pending_display.start_time;
   
   if (elapsed >= _pending_display.duration_ms) {
-    // Duration expired, clear display
-    Serial.printf("INFO: Display async expired (%lu ms elapsed >= %lu ms duration). Clearing.\n", 
+    // Duration expired, restore bargraph
+    Serial.printf("INFO: Display async expired (%lu ms elapsed >= %lu ms duration). Restoring bargraph.\n", 
                   elapsed, _pending_display.duration_ms);
-    clear();
     _pending_display.active = false;
+    clear();
+    status(motor_up.index, motor_down.index, feeder.index);
   }
 }
 

@@ -125,6 +125,8 @@ public:
     Point.stepper_index = feeder.index;
     Point.index_up = motor_up.index;
     Point.index_down = motor_down.index;
+    Point.spin_up = motor_up.spin;
+    Point.spin_down = motor_down.spin;
 
     Serial.print("MOTOR UP SPEED:");
     Serial.println(Point._up, DEC);
@@ -155,6 +157,8 @@ public:
     Point.stepper_index = feeder.index;
     Point.index_up = motor_up.index;
     Point.index_down = motor_down.index;
+    Point.spin_up = motor_up.spin;
+    Point.spin_down = motor_down.spin;
 
     Serial.print("MOTOR UP SPEED:");
     Serial.println(Point._up, DEC);
@@ -299,8 +303,7 @@ public:
       }
 
       current_point_waiting = 0;
-      display.displayImage_async(IMAGES[12], .5); // ok save
-      show_display_status();
+      display.displayImage_async(IMAGES[12], .5); // ok save — bargraph restored by update() after 500ms
     }
   }
 
@@ -320,8 +323,7 @@ public:
       load_target_point(point_name);
 
       current_point_waiting = 0;
-      display.displayImage_async(IMAGES[25], .5); // ok save
-      show_display_status();
+      display.displayImage_async(IMAGES[25], .5); // ok load — bargraph restored by update() after 500ms
     }
   }
 
@@ -355,6 +357,15 @@ public:
       motor_down.spin = Brush::NOSPIN;
       motor_up.set_spin_after_load(Brush::NOSPIN);
       motor_down.set_spin_after_load(Brush::NOSPIN);
+    }
+    else
+    {
+      // spin_up=0 (BACKSPIN) or unknown — old NVS data saved before spin was tracked.
+      // Fall back to TOPSPIN (safest default for motor_up).
+      motor_up.spin  = Brush::TOPSPIN;
+      motor_down.spin = Brush::SUPPORT;
+      motor_up.set_spin_after_load(Brush::TOPSPIN);
+      motor_down.set_spin_after_load(Brush::SUPPORT);
     }
 
     motor_up.set_speed();
