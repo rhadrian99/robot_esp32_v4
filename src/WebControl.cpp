@@ -211,8 +211,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
             document.getElementById('m1val').textContent=d.m1;
           }
           if(document.activeElement!==m2){
-            m2.value=nospin?0:d.m2;
-            document.getElementById('m2val').textContent=nospin?0:d.m2;
+            m2.value=nospin?d.m1:d.m2;
+            document.getElementById('m2val').textContent=nospin?d.m1:d.m2;
           }
           var f=document.getElementById('f');
           var motorsOff=(d.m1===0 && d.m2===0);
@@ -960,11 +960,19 @@ void WebControl::_handle_t1save()
     mainMotor->update_speeds(mainMotor->_SPEEDS, mainMotor->speed, "BACKSPIN", MOTOR_STEP);
   } else if (spinMode == Brush::NOSPIN) {
     mainMotor->update_speeds_nospin(mainMotor->_SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
+    // NOSPIN: sync support motor with same speeds
+    motor_down.update_speeds_nospin(motor_down._SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
   }
   
   // Save to NVS and reload
   mainMotor->save_data_as();
   mainMotor->load_data_as();
+  
+  // NOSPIN: also save support motor
+  if (spinMode == Brush::NOSPIN) {
+    motor_down.save_data_as();
+    motor_down.load_data_as();
+  }
   
   // Display OK sign on LED matrix
   display.displayImage_async(IMAGES[12], 1); // ok save
@@ -997,13 +1005,25 @@ void WebControl::_handle_t2save()
   } else if (spinMode == Brush::BACKSPIN) {
     supportMotor->update_speeds(supportMotor->_SPEEDS, supportMotor->speed, "SUPPORT", SUPPORT_STEP);
   } else if (spinMode == Brush::NOSPIN) {
-    // NOSPIN: T2 is disabled anyway, but handle gracefully
-    supportMotor->update_speeds(supportMotor->_SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
+    // NOSPIN: T2 is disabled anyway, but sync both motors
+    motor_up.update_speeds_nospin(motor_up._SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
+    motor_down.update_speeds_nospin(motor_down._SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
   }
   
   // Save to NVS and reload
   supportMotor->save_data_as();
   supportMotor->load_data_as();
+  
+  // NOSPIN: also save the other motor
+  if (spinMode == Brush::NOSPIN) {
+    if (supportMotor == &motor_down) {
+      motor_up.save_data_as();
+      motor_up.load_data_as();
+    } else {
+      motor_down.save_data_as();
+      motor_down.load_data_as();
+    }
+  }
   
   // Display OK sign on LED matrix
   display.displayImage_async(IMAGES[12], 1); // ok save

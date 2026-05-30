@@ -406,6 +406,15 @@ void Brush:: increase_speed(uint8_t val)
   
   this->speed+=val;
   if (this->speed>MOTOR_MAX) {this->speed=MOTOR_MAX;}
+  
+  // Update index to match current speed value
+  for (int i = 1; i <= 8; i++) {
+    if (this->speed >= _SPEEDS[i]) {
+      index = i;
+    } else {
+      break;
+    }
+  }
     
    set_speed2(this->speed);
    DEBUG(motor_position + F(" speed = "),this->speed,true );
@@ -419,6 +428,16 @@ void Brush:: decrease_speed(uint8_t val)
     
     this->speed-=val;
     if (this->speed<MOTOR_MIN) {this->speed=MOTOR_MIN;}
+    
+    // Update index to match current speed value
+    for (int i = 8; i >= 1; i--) {
+      if (this->speed <= _SPEEDS[i]) {
+        index = i;
+      } else {
+        break;
+      }
+    }
+   
    set_speed2(this->speed);
    
    DEBUG(motor_position + F(" speed = "),this->speed,true );
