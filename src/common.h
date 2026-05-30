@@ -108,7 +108,7 @@
 #define data_Pin 17 // 25  //esp32
 
 // Firmware version
-#define FW_VERSION "6.3"
+#define FW_VERSION "6.4"
 
 #endif
 

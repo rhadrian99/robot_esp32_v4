@@ -24,7 +24,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Robot Control</title>
+  <title>Robot Control v6.4</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:sans-serif;background:#1a1a2e;color:#eee;
@@ -60,7 +60,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </style>
 </head>
 <body>
-  <h2>&#127926; Robot Control</h2>
+  <h2>&#127926; Robot Control <span style="font-size:14px;color:#888" id="title-version">v6.4</span></h2>
 
   <div class="card">
     <div class="row">
@@ -72,7 +72,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   <div class="card">
     <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px">
       <button onclick="confirmSavePos()" style="display:none;border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">&#128190;</button>
-      <button id="btn-step" onclick="toggleStep()" style="border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">6&#176;</button>
+      <button id="btn-step" onclick="toggleStep()" style="display:none;border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">6&#176;</button>
     </div>
     <div class="grid">
       <div class="empty"></div>
@@ -95,33 +95,34 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
-  <div class="card slider-wrap">
-    <div class="slider-item">
-      <label><span id="m1label">MAIN</span> <span id="m1val">0</span>/8</label>
-      <input type="range" min="0" max="8" value="0" id="m1"
-             oninput="document.getElementById('m1val').textContent=this.value"
-             onchange="setMotor(1,this.value)">
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <span id="m1label" style="font-size:12px;color:#aaa;font-weight:bold">MAIN</span>
+        <button class="dpad" onclick="mMotor1(1)">&#9650;</button>
+        <span style="font-size:18px;color:#e94560;font-weight:bold"><span id="m1val">0</span>/8</span>
+        <button class="dpad" onclick="mMotor1(-1)">&#9660;</button>
+      </div>
+      <div id="m2col" style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <span style="font-size:12px;color:#aaa;font-weight:bold">SUPPORT</span>
+        <button class="dpad" onclick="mMotor2(1)">&#9650;</button>
+        <span style="font-size:18px;color:#e94560;font-weight:bold"><span id="m2val">0</span>/8</span>
+        <button class="dpad" onclick="mMotor2(-1)">&#9660;</button>
+      </div>
     </div>
-    <div class="slider-item">
-      <label>SUPPORT <span id="m2val">0</span>/8</label>
-      <input type="range" min="0" max="8" value="0" id="m2"
-             oninput="document.getElementById('m2val').textContent=this.value"
-             onchange="setMotor(2,this.value)">
-    </div>
-  </div>
-
-  <div class="card slider-wrap">
-    <div class="slider-item">
-      <label>Frecventa bile <span id="fval">0</span>/8</label>
-      <input type="range" min="0" max="8" value="0" id="f"
-             oninput="document.getElementById('fval').textContent=this.value"
-             onchange="setFeeder(this.value)">
+    <div style="border-top:1px solid #0f3460;margin-top:12px;padding-top:10px">
+      <div style="font-size:12px;color:#aaa;text-align:center;margin-bottom:10px;font-weight:bold">frecventa bile</div>
+      <div id="f-row" style="display:flex;align-items:center;justify-content:center;gap:24px">
+        <button class="dpad" onclick="mFeeder(-1)">&#9664;</button>
+        <span style="font-size:18px;color:#e94560;font-weight:bold;min-width:36px;text-align:center"><span id="fval">0</span>/8</span>
+        <button class="dpad" onclick="mFeeder(1)">&#9654;</button>
+      </div>
     </div>
   </div>
 
   <div id="status">ready</div>
 
-  <div style="background:#16213e;border-radius:14px;padding:8px 14px;width:100%;max-width:320px;text-align:center;font-size:12px;color:#888">
+  <div style="background:#16213e;border-radius:14px;padding:8px 14px;width:100%;max-width:320px;text-align:center;font-size:12px;color:#888;display:none">
     Firmware v<span id="fw-version">-</span>
   </div>
 
@@ -166,10 +167,28 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
         .catch(()=>document.getElementById('status').textContent='error');
     }
-    function setMotor(n,v){
-      fetch('/motor'+n+'?v='+v)
+    function mMotor1(delta){
+      var cur=parseInt(document.getElementById('m1val').textContent)||0;
+      var nv=Math.min(8,Math.max(0,cur+delta));
+      fetch('/motor1?v='+nv)
         .then(r=>r.text())
-        .then(t=>document.getElementById('status').textContent=t)
+        .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
+        .catch(()=>document.getElementById('status').textContent='error');
+    }
+    function mMotor2(delta){
+      var cur=parseInt(document.getElementById('m2val').textContent)||0;
+      var nv=Math.min(8,Math.max(0,cur+delta));
+      fetch('/motor2?v='+nv)
+        .then(r=>r.text())
+        .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
+        .catch(()=>document.getElementById('status').textContent='error');
+    }
+    function mFeeder(delta){
+      var cur=parseInt(document.getElementById('fval').textContent)||0;
+      var nv=Math.min(8,Math.max(0,cur+delta));
+      fetch('/feeder?v='+nv)
+        .then(r=>r.text())
+        .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
         .catch(()=>document.getElementById('status').textContent='error');
     }
     function confirmSavePos(){
@@ -189,40 +208,23 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .then(t=>document.getElementById('status').textContent=t)
         .catch(()=>document.getElementById('status').textContent='error');
     }
-    function setFeeder(v){
-      fetch('/feeder?v='+v)
-        .then(r=>r.text())
-        .then(t=>document.getElementById('status').textContent=t)
-        .catch(()=>document.getElementById('status').textContent='error');
-    }
     function pollStatus(){
       fetch('/status')
         .then(r=>r.json())
         .then(d=>{
           document.getElementById('btn-mute').textContent=d.spin;
           document.getElementById('m1label').textContent=d.spin;
-          var m1=document.getElementById('m1');
-          var m2=document.getElementById('m2');
           var nospin=(d.spin==='NOSPIN');
-          m2.disabled=nospin;
-          m2.style.opacity=nospin?'0.3':'1';
-          if(document.activeElement!==m1){
-            m1.value=d.m1;
-            document.getElementById('m1val').textContent=d.m1;
-          }
-          if(document.activeElement!==m2){
-            m2.value=nospin?d.m1:d.m2;
-            document.getElementById('m2val').textContent=nospin?d.m1:d.m2;
-          }
-          var f=document.getElementById('f');
+          var m2col=document.getElementById('m2col');
+          m2col.style.opacity=nospin?'0.3':'1';
+          m2col.style.pointerEvents=nospin?'none':'auto';
+          document.getElementById('m1val').textContent=d.m1;
+          document.getElementById('m2val').textContent=nospin?d.m1:d.m2;
           var motorsOff=(d.m1===0 && d.m2===0);
-          f.disabled=motorsOff;
-          f.style.opacity=motorsOff?'0.3':'1';
-          if(motorsOff){f.value=0;document.getElementById('fval').textContent=0;}
-          if(document.activeElement!==f && !motorsOff){
-            f.value=d.f;
-            document.getElementById('fval').textContent=d.f;
-          }
+          var frow=document.getElementById('f-row');
+          frow.style.opacity=motorsOff?'0.3':'1';
+          frow.style.pointerEvents=motorsOff?'none':'auto';
+          document.getElementById('fval').textContent=motorsOff?0:d.f;
           if(d.pan!==undefined) document.getElementById('pan-val').textContent=d.pan;
           if(d.pan_min!==undefined) document.getElementById('pan-min').textContent=d.pan_min;
           if(d.pan_max!==undefined) document.getElementById('pan-max').textContent=d.pan_max;
@@ -230,7 +232,11 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           if(d.tilt_min!==undefined) document.getElementById('tilt-min').textContent=d.tilt_min;
           if(d.tilt_max!==undefined) document.getElementById('tilt-max').textContent=d.tilt_max;
           if(d.step!==undefined) document.getElementById('btn-step').textContent=d.step+'\u00b0';
-          if(d.version!==undefined) document.getElementById('fw-version').textContent=d.version;
+          if(d.version!==undefined) {
+            document.getElementById('fw-version').textContent=d.version;
+            document.getElementById('title-version').textContent='v'+d.version;
+            document.title='Robot Control v'+d.version;
+          }
         }).catch(()=>{});
     }
     var pollInterval;
