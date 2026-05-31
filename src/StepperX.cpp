@@ -16,7 +16,7 @@ extern void DEBUG(String label, bool newline);
 
 // connect and configure the stepper motor to its IO pins
 
-uint8_t FEEDER[]={0, 9, 8, 7, 6, 5, 4, 3, 2};
+static const uint8_t FEEDER_TABLE[9] = {0, 9, 8, 7, 6, 5, 4, 3, 2};
 
 
 StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
@@ -41,23 +41,11 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
     
   }
    timeout_const=200;
-   directie=-1; //1  for normal
-   //load_direction();
-      
-   
-  // if (directie ==-1 ) {_stepper->setDirectionPin(_dirPin,false);}
-   //else {_stepper->setDirectionPin(_dirPin,true);}
-   
-   //_stepper->setDirectionPin(_dirPin,false);
-
-   
-   //save_direction();
-  
-  //_stepper.setAccelerationInStepsPerSecondPerSecond(500);
+   directie=-1; // -1 = normal, 1 = reversed
 
    index=0;
-   memcpy(_FEEDER, FEEDER, sizeof(FEEDER));
-   name="directie";
+   memcpy(_FEEDER, FEEDER_TABLE, sizeof(FEEDER_TABLE));
+   name="stepper";
    // load_timeout_const() intentionally NOT called here — NVS is not initialized yet
    // (global constructor runs before setup()). Call feeder.load_timeout_const() in setup().
 
@@ -68,7 +56,7 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
 
 void StepperX::init_pins()
 {
-   //_stepper.startAsService(1);   
+   // WARNING: DO NOT CALL — pinMode() on step pin breaks FAS RMT/MCPWM GPIO routing
    pinMode(_stepPin, OUTPUT);
    pinMode(_dirPin,  OUTPUT);
    pinMode(_stopPin, OUTPUT);
@@ -145,14 +133,12 @@ steps/sec
 100		0.5		  1         1.5
 */
 
-  void StepperX::move_stepper(int16_t _speed, bool prog)  //numar de pasi de executat
+  void StepperX::move_stepper(bool prog)
   {
-  // start
-  // move 50 steps with current speed
-  // stop
-  // timeout based on FEEDER index value
-  
-    _speed=50*2.75*8; //tmc2208 v1 ms1 jumper offa4938
+  // move one feeder step (STEPS_PER_REV * GEAR_RATIO * MICROSTEP steps)
+  // then optionally wait timeout based on FEEDER index value
+
+    int16_t _speed = (int16_t)(STEPS_PER_REV * STEPPER_GEAR_RATIO * MICROSTEP);
 
   if (prog==true)
   { 
@@ -161,12 +147,17 @@ steps/sec
   }
   else {start();}
         
-  _stepper->setCurrentPosition(0);
   _stepper->move(directie*_speed);
   
-  while (_stepper->isRunning())
+  // Safety timeout: 5s max — prevents infinite block if FAS gets stuck
+  unsigned long _move_deadline = millis() + 5000UL;
+  while (_stepper->isRunning() && millis() < _move_deadline)
   {
     yield();
+  }
+  if (_stepper->isRunning()) {
+    _stepper->stopMove();
+    Serial.printf("WARNING: move_stepper() timeout — stepper force-stopped\n");
   }
 
    if (prog==true)

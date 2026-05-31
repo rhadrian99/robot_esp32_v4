@@ -171,7 +171,7 @@ void loop()
   if (execute == false && mode == 'N') // outside programming area
   {
 
-    feeder.move_stepper(100, true); /// true is for delayed movement
+    feeder.move_stepper(true); // true = delayed movement (timeout based on FEEDER index)
   }
 
 } //////////////////////////////////////////////////// end loop
