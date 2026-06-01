@@ -168,6 +168,58 @@ int infrared_get_current_point()
   return infrared_normal.get_current_point_waiting();
 }
 
+String infrared_get_pozdata_json(int poz)
+{
+  if (poz < 1 || poz > 6) return "{\"error\":\"Invalid poz\"}";
+  
+  target_point pt;
+  pt.name = "Point" + String(poz);
+  
+  // Check if data actually exists in NVS
+  Preferences check_prefs;
+  bool data_exists = false;
+  if (check_prefs.begin((pt.name).c_str(), false)) {
+    size_t len = check_prefs.getBytesLength((pt.name).c_str());
+    data_exists = (len == MAX_TARGET_POINT_SIZE);
+    check_prefs.end();
+  }
+  
+  if (!data_exists) {
+    return "{\"exists\":false}";
+  }
+  
+  target_point loaded = target_load_nvm(pt);
+  
+  String spin_up_str = "UNKNOWN";
+  String spin_down_str = "UNKNOWN";
+  
+  switch (loaded.spin_up)
+  {
+    case Brush::TOPSPIN: spin_up_str = "TOPSPIN"; break;
+    case Brush::BACKSPIN: spin_up_str = "BACKSPIN"; break;
+    case Brush::SUPPORT: spin_up_str = "SUPPORT"; break;
+    case Brush::NOSPIN: spin_up_str = "NOSPIN"; break;
+  }
+  
+  switch (loaded.spin_down)
+  {
+    case Brush::TOPSPIN: spin_down_str = "TOPSPIN"; break;
+    case Brush::BACKSPIN: spin_down_str = "BACKSPIN"; break;
+    case Brush::SUPPORT: spin_down_str = "SUPPORT"; break;
+    case Brush::NOSPIN: spin_down_str = "NOSPIN"; break;
+  }
+
+  char buf[512];
+  sprintf(buf,
+    "{\"exists\":true,\"poz\":%d,\"m1_spin\":\"%s\",\"m1_index\":%d,\"m2_spin\":\"%s\",\"m2_index\":%d,\"feeder_index\":%d,\"feeder_speed\":%d}",
+    poz,
+    spin_up_str.c_str(), loaded.index_up,
+    spin_down_str.c_str(), loaded.index_down,
+    loaded.stepper_index, loaded.stepper_speed);
+  
+  return String(buf);
+}
+
 
 
 #endif

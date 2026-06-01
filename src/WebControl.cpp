@@ -9,6 +9,7 @@ extern void infrared_menu(uint32_t _var, char _mode);
 extern void infrared_web_save_point(int poz);
 extern void infrared_web_run_point(int poz);
 extern int infrared_get_current_point();
+extern String infrared_get_pozdata_json(int poz);
 extern char mode;
 extern uint8_t servo_step;
 extern Brush motor_up;
@@ -68,7 +69,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   <div class="card">
     <div class="row">
       <button class="btn btn-mute" id="btn-mute" onclick="cmd('mute')">...</button>
-      <button class="btn btn-power" onclick="cmd('power')">&#9211;</button>
+      <button class="btn btn-power" onclick="errorSound();cmd('power')">&#9211;</button>
     </div>
   </div>
 
@@ -192,16 +193,78 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <script>
+    // ── Audio feedback functions ──
+    let audioContext = null;
+    function initAudio(){
+      if(!audioContext){
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+    function beep(freq=800, duration=100, vol=0.3){
+      initAudio();
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration/1000);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + duration/1000);
+    }
+    function clickSound(){ beep(600, 80, 0.2); }
+    function confirmSound(){ beep(900, 150, 0.3); }
+    function errorSound(){ beep(300, 200, 0.25); }
+
     var _currentPoz = 1;
+    var _viewingSavedPoz = false;
+    function displayPozData(poz){
+      fetch('/pozdata?poz=' + poz)
+        .then(r=>r.json())
+        .then(d=>{
+          if(!d.exists){
+            // No data saved for this position
+            document.getElementById('poz-m1-spin').textContent = 'N/A';
+            document.getElementById('poz-m1-idx').textContent = 'N/A';
+            document.getElementById('poz-m2-spin').textContent = 'N/A';
+            document.getElementById('poz-m2-idx').textContent = 'N/A';
+            document.getElementById('poz-feed-spd').textContent = 'N/A';
+            document.getElementById('poz-feed-idx').textContent = 'N/A';
+          } else {
+            // Data exists, display it
+            document.getElementById('poz-m1-spin').textContent = d.m1_spin;
+            document.getElementById('poz-m1-idx').textContent = d.m1_index;
+            document.getElementById('poz-m2-spin').textContent = d.m2_spin;
+            document.getElementById('poz-m2-idx').textContent = d.m2_index;
+            document.getElementById('poz-feed-spd').textContent = d.feeder_speed;
+            document.getElementById('poz-feed-idx').textContent = d.feeder_index;
+          }
+          _viewingSavedPoz = true;
+        })
+        .catch(()=>{
+          // Error fetching data
+          document.getElementById('poz-m1-spin').textContent = 'N/A';
+          document.getElementById('poz-m1-idx').textContent = 'N/A';
+          document.getElementById('poz-m2-spin').textContent = 'N/A';
+          document.getElementById('poz-m2-idx').textContent = 'N/A';
+          document.getElementById('poz-feed-spd').textContent = 'N/A';
+          document.getElementById('poz-feed-idx').textContent = 'N/A';
+          _viewingSavedPoz = true;
+        });
+    }
     function togglePoz(){
+      clickSound();
       _currentPoz = (_currentPoz % 6) + 1;
       document.getElementById('poz-btn').textContent = 'Poz ' + _currentPoz;
+      displayPozData(_currentPoz);
     }
     function savePoz(){
+      clickSound();
       document.getElementById('poz-modal-text').textContent = 'Salvezi Poz ' + _currentPoz + '?';
       document.getElementById('poz-save-modal').style.display = 'flex';
     }
     function pozModalOk(){
+      confirmSound();
       document.getElementById('poz-save-modal').style.display = 'none';
       fetch('/savepoint?poz=' + _currentPoz)
         .then(r=>r.text())
@@ -209,9 +272,13 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>document.getElementById('status').textContent='save error');
     }
     function pozModalCancel(){
+      errorSound();
       document.getElementById('poz-save-modal').style.display = 'none';
     }
     function runPoz(){
+      confirmSound();
+      // Data already displayed from togglePoz, just execute
+      _viewingSavedPoz = false;  // Switch back to live status mode after running
       fetch('/runpoint?poz=' + _currentPoz)
         .then(r=>r.text())
         .then(t=>document.getElementById('status').textContent=t)
@@ -225,14 +292,17 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           if(d.current_poz > 0 && d.current_poz <= 6){
             _currentPoz = d.current_poz;
             document.getElementById('poz-btn').textContent = 'Poz ' + _currentPoz;
+            _viewingSavedPoz = false;  // Reset when position changes from remote
           }
-          // Update motor and feeder info
-          document.getElementById('poz-m1-spin').textContent = d.m1_spin;
-          document.getElementById('poz-m1-idx').textContent = d.m1_index;
-          document.getElementById('poz-m2-spin').textContent = d.m2_spin;
-          document.getElementById('poz-m2-idx').textContent = d.m2_index;
-          document.getElementById('poz-feed-spd').textContent = d.feeder_speed;
-          document.getElementById('poz-feed-idx').textContent = d.feeder_index;
+          // Update motor and feeder info only if not viewing saved position
+          if(!_viewingSavedPoz){
+            document.getElementById('poz-m1-spin').textContent = d.m1_spin;
+            document.getElementById('poz-m1-idx').textContent = d.m1_index;
+            document.getElementById('poz-m2-spin').textContent = d.m2_spin;
+            document.getElementById('poz-m2-idx').textContent = d.m2_index;
+            document.getElementById('poz-feed-spd').textContent = d.feeder_speed;
+            document.getElementById('poz-feed-idx').textContent = d.feeder_index;
+          }
         })
         .catch(()=>{});
     }
@@ -243,6 +313,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>{});
     }
     function cmd(dir){
+      clickSound();
       document.getElementById('status').textContent=dir+'...';
       fetch('/'+dir)
         .then(r=>r.text())
@@ -250,6 +321,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>document.getElementById('status').textContent='error');
     }
     function mMotor1(delta){
+      clickSound();
       var url=(delta>0)?'/motor1/up':'/motor1/down';
       fetch(url)
         .then(r=>r.text())
@@ -257,6 +329,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>document.getElementById('status').textContent='error');
     }
     function mMotor2(delta){
+      clickSound();
       var url=(delta>0)?'/motor2/up':'/motor2/down';
       fetch(url)
         .then(r=>r.text())
@@ -330,6 +403,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     }
     window.addEventListener('beforeunload',stopPolling);
     startPolling();
+    displayPozData(1);
   </script>
 </body>
 </html>
@@ -891,6 +965,7 @@ void WebControl::_register_routes()
   _server.on("/savepoint",     HTTP_GET, _s_savepoint);
   _server.on("/runpoint",      HTTP_GET, _s_runpoint);
   _server.on("/pozinfo",       HTTP_GET, _s_pozinfo);
+  _server.on("/pozdata",       HTTP_GET, _s_pozdata);
   _server.on("/setspin",       HTTP_GET, _s_setspin);
   _server.on("/vup",           HTTP_GET, _s_vup);
   _server.on("/vdown",         HTTP_GET, _s_vdown);
@@ -1280,6 +1355,17 @@ void WebControl::_handle_pozinfo()
     feeder.index, feeder.speed);
   
   _server.send(200, "application/json", buffer);
+}
+
+void WebControl::_handle_pozdata()
+{
+  // Return JSON with saved position data from NVM
+  int poz = 1;
+  if (_server.hasArg("poz"))
+    poz = _server.arg("poz").toInt();
+  
+  String json = infrared_get_pozdata_json(poz);
+  _server.send(200, "application/json", json);
 }
 
 void WebControl::_handle_setspin()
