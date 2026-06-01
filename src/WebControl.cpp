@@ -678,16 +678,6 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
     </table>
   </div>
 </div>
-
-<div class="card">
-  <div style="font-size:12px;color:#888;margin-bottom:12px;font-weight:bold">Constante</div>
-  <div class="const-row"><span>MOTOR_STEP</span><span>30</span></div>
-  <div class="const-row"><span>MOTOR_STEP_SETUP</span><span>10</span></div>
-  <div class="const-row"><span>MOTOR_STEP_NOSPIN</span><span>4</span></div>
-  <div class="const-row"><span>SUPPORT_STEP_SETUP</span><span>4</span></div>
-  <div class="const-row"><span>SUPPORT_STEP</span><span>8</span></div>
-</div>
-
 <button class="back" onclick="window.location='/'">◄ Inapoi</button>
 <div id="status" style="text-align:center;font-size:12px;color:#666;margin-top:16px">ready</div>
 
