@@ -91,7 +91,8 @@ public:
     {
       if (execute==true)  {return;}
       points++;
-      if (points>4) {points=2;}
+      if (points==5) points++;  // skip 5, go to 6
+      if (points>6) {points=2;}
       
       if (points==2) 
       {
@@ -105,11 +106,10 @@ public:
       {
         display.show_char('4',0.5);
       }
-      //if (points==5) 
-      //{
-       // display.show_char('5',0.5);
-      //}
-
+      if (points==6)
+      {
+        display.show_char('R',0.5);  // Random
+      }
     }
   
   void _Tstar() override  // PRE-CH button start/stop selected program

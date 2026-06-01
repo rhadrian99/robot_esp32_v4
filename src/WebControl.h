@@ -57,6 +57,9 @@ private:
   void _handle_runpoint();
   void _handle_pozinfo();
   void _handle_pozdata();
+  void _handle_runstop();
+  void _handle_seqinfo();
+  void _handle_cycleprogram();
   void _handle_setspin();
   void _handle_vup();
   void _handle_vdown();
@@ -104,6 +107,9 @@ private:
   static void _s_runpoint()      { _instance->_handle_runpoint(); }
   static void _s_pozinfo()       { _instance->_handle_pozinfo(); }
   static void _s_pozdata()       { _instance->_handle_pozdata(); }
+  static void _s_runstop()       { _instance->_handle_runstop(); }
+  static void _s_seqinfo()       { _instance->_handle_seqinfo(); }
+  static void _s_cycleprogram()  { _instance->_handle_cycleprogram(); }
   static void _s_setspin()       { _instance->_handle_setspin(); }
   static void _s_vup()           { _instance->_handle_vup(); }
   static void _s_vdown()         { _instance->_handle_vdown(); }

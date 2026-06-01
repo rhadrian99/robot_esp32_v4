@@ -10,6 +10,8 @@ extern void infrared_web_save_point(int poz);
 extern void infrared_web_run_point(int poz);
 extern int infrared_get_current_point();
 extern String infrared_get_pozdata_json(int poz);
+extern int infrared_get_selected_program();
+extern bool infrared_get_execute_state();
 extern char mode;
 extern uint8_t servo_step;
 extern Brush motor_up;
@@ -150,6 +152,18 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <div id="status">ready</div>
+
+  <div class="card">
+    <div style="font-size:12px;color:#aaa;text-align:center;margin-bottom:10px;font-size:14px;font-weight:bold">Selectie programe</div>
+    <div style="display:flex;gap:12px">
+      <button id="seq-btn" onclick="toggleSequence()" style="flex:1;border:none;border-radius:10px;background:#0f3460;color:#e94560;font-size:14px;padding:10px;cursor:pointer;font-weight:bold">
+        P1 - P3
+      </button>
+      <button id="run-stop-btn" onclick="toggleRunStop()" style="flex:1;border:none;border-radius:10px;background:#0f3460;color:#e94560;font-size:14px;padding:10px;cursor:pointer;font-weight:bold">
+        RUN
+      </button>
+    </div>
+  </div>
 
   <div style="background:#16213e;border-radius:14px;padding:8px 14px;width:100%;max-width:320px;text-align:center;font-size:12px;color:#888;display:none">
     Firmware v<span id="fw-version">-</span>
@@ -306,6 +320,44 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         })
         .catch(()=>{});
     }
+    var _seqIndex = 0;
+    const _sequences = ['P1 - P3', 'P1 - P2 -P3', 'P1-P1-P3-P3', 'Random'];
+    function toggleSequence(){
+      clickSound();
+      // Send T9 command to cycle program
+      fetch('/cycleprogram')
+        .then(r=>r.text())
+        .then(()=>{
+          // Fetch updated program info
+          return fetch('/seqinfo').then(r=>r.json());
+        })
+        .then(d=>{
+          // Map program number to sequence index: 2->0, 3->1, 4->2, 6->3
+          let progToIdx = {2:0, 3:1, 4:2, 6:3};
+          if(d.program in progToIdx){
+            _seqIndex = progToIdx[d.program];
+            document.getElementById('seq-btn').textContent = _sequences[_seqIndex];
+          }
+        })
+        .catch(()=>{});
+    }
+    var _runStopState = 'RUN';
+    function toggleRunStop(){
+      clickSound();
+      // Send command to /runstop to toggle execute state on IR
+      fetch('/runstop')
+        .then(r=>r.text())
+        .then(()=>{
+          // Fetch updated state
+          return fetch('/seqinfo').then(r=>r.json());
+        })
+        .then(d=>{
+          // Update button text based on running state
+          _runStopState = d.running ? 'STOP' : 'RUN';
+          document.getElementById('run-stop-btn').textContent = _runStopState;
+        })
+        .catch(()=>{});
+    }
     function toggleStep(){
       fetch('/step')
         .then(r=>r.json())
@@ -392,11 +444,29 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           }
         }).catch(()=>{});
     }
+    function updateSeqInfo(){
+      // Sync sequence/program from IR to UI
+      fetch('/seqinfo')
+        .then(r=>r.json())
+        .then(d=>{
+          // Map program number to sequence index: 2->0, 3->1, 4->2, 6->3
+          let progToIdx = {2:0, 3:1, 4:2, 6:3};
+          if(d.program in progToIdx){
+            _seqIndex = progToIdx[d.program];
+            document.getElementById('seq-btn').textContent = _sequences[_seqIndex];
+          }
+          // Update run/stop button
+          _runStopState = d.running ? 'STOP' : 'RUN';
+          document.getElementById('run-stop-btn').textContent = _runStopState;
+        })
+        .catch(()=>{});
+    }
     var pollInterval;
     function startPolling(){
-      pollInterval=setInterval(()=>{pollStatus();updatePozInfo();},500);
+      pollInterval=setInterval(()=>{pollStatus();updatePozInfo();updateSeqInfo();},500);
       pollStatus();
       updatePozInfo();
+      updateSeqInfo();
     }
     function stopPolling(){
       if(pollInterval) clearInterval(pollInterval);
@@ -562,11 +632,11 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
       <div class="dempty"></div>
       <div class="dempty"></div>
       <!-- row 2 -->
-      <button class="dpad dpad-mm" onclick="sCmd('panmin')">&#9664;<br>Min</button>
+      <button class="dpad dpad-mm" onclick="sCmd('panmin')">&#9664;<br>Max</button>
       <button class="dpad" onclick="sCmd('left')">&#9664;</button>
       <button class="dpad" onclick="sCmd('home')" style="font-size:20px">&#127968;</button>
       <button class="dpad" onclick="sCmd('right')">&#9654;</button>
-      <button class="dpad dpad-mm" onclick="sCmd('panmax')">Max<br>&#9654;</button>
+      <button class="dpad dpad-mm" onclick="sCmd('panmax')">Min<br>&#9654;</button> <!-- swapped min/max on pan for better ergonomics (most users will adjust pan more often and want quick access to min/max) -->
       <!-- row 3 -->
       <div class="dempty"></div>
       <div class="dempty"></div>
@@ -966,6 +1036,9 @@ void WebControl::_register_routes()
   _server.on("/runpoint",      HTTP_GET, _s_runpoint);
   _server.on("/pozinfo",       HTTP_GET, _s_pozinfo);
   _server.on("/pozdata",       HTTP_GET, _s_pozdata);
+  _server.on("/runstop",       HTTP_GET, _s_runstop);
+  _server.on("/seqinfo",       HTTP_GET, _s_seqinfo);
+  _server.on("/cycleprogram",  HTTP_GET, _s_cycleprogram);
   _server.on("/setspin",       HTTP_GET, _s_setspin);
   _server.on("/vup",           HTTP_GET, _s_vup);
   _server.on("/vdown",         HTTP_GET, _s_vdown);
@@ -1366,6 +1439,31 @@ void WebControl::_handle_pozdata()
   
   String json = infrared_get_pozdata_json(poz);
   _server.send(200, "application/json", json);
+}
+
+void WebControl::_handle_runstop()
+{
+  // Toggle execute state (run/stop program) - calls _Tstar()
+  infrared_menu(TStar, 'P');  // Send TStar command to program mode
+  _server.send(200, "text/plain", "ok");
+}
+
+void WebControl::_handle_seqinfo()
+{
+  // Return current sequence/program number
+  int prog = infrared_get_selected_program();
+  bool running = infrared_get_execute_state();
+  
+  char buf[64];
+  sprintf(buf, "{\"program\":%d,\"running\":%s}", prog, running ? "true" : "false");
+  _server.send(200, "application/json", buf);
+}
+
+void WebControl::_handle_cycleprogram()
+{
+  // Cycle to next program (simulates T9 button press)
+  infrared_menu(T9, 'P');  // Send T9 command to program mode
+  _server.send(200, "text/plain", "ok");
 }
 
 void WebControl::_handle_setspin()

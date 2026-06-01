@@ -15,6 +15,7 @@ private:
   Ticker confirmation_ticker;
   Ticker blink_ticker;
   bool blink_state = false;
+  bool program_preloaded = false; // Track if positions have been preloaded for current program run
 
   void _confirm_timeout()
   {
@@ -723,6 +724,7 @@ public:
     motor_down.set_speed(0);
 
     execute = false;
+    program_preloaded = false;  // Reset preload flag when program stops
     mode = 'N';
 
     tempo_empty(500);
@@ -733,6 +735,7 @@ public:
   void virtual _Tdiez()
   {
     execute = false;
+    program_preloaded = false;  // Reset preload flag when program stops
     mode = 'N';
     stop_all();
 
@@ -781,16 +784,28 @@ public:
     // NO show_display_status() - avoid conflict with async display
   }
 
-  void program()
+  void preload_all_positions()
   {
-    if (execute == false)
-      return;
-    int time = 700;
-
+    // Load all 6 positions from NVM once at program start to avoid repeated disk I/O during execution
     for (int i = 1; i <= 6; i++)
     {
       load_point_from_nvm(i);
     }
+  }
+
+  void program()
+  {
+    if (execute == false)
+      return;
+    
+    // Preload all positions only once per program execution
+    if (!program_preloaded)
+    {
+      preload_all_positions();
+      program_preloaded = true;
+    }
+    
+    int time = 700;
 
     if (mode == 'N')
     {

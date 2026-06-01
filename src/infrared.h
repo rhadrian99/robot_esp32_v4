@@ -133,18 +133,16 @@ void infrared_menu(uint32_t _var, char _mode)
       infrared_servo.menu(_var);
       
       break;  
-    /*
-    case 'P': // program left right
+    
+    case 'P': // program mode
       infrared_program.menu(_var);
       
       break;
-   */   
+       
     case 'M': // program topspin motor
       infrared_brush.menu(_var);
        
       break;  
-
-
 
     default:
       break;
@@ -166,6 +164,17 @@ void infrared_web_run_point(int poz)
 int infrared_get_current_point()
 {
   return infrared_normal.get_current_point_waiting();
+}
+
+int infrared_get_selected_program()
+{
+  return points;
+}
+
+bool infrared_get_execute_state()
+{
+  extern volatile bool execute;
+  return execute;
 }
 
 String infrared_get_pozdata_json(int poz)
