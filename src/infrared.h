@@ -163,6 +163,11 @@ void infrared_web_run_point(int poz)
   infrared_normal.web_run_point(poz);
 }
 
+int infrared_get_current_point()
+{
+  return infrared_normal.get_current_point_waiting();
+}
+
 
 
 #endif

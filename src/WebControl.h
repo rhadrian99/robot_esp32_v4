@@ -55,6 +55,7 @@ private:
   void _handle_t2save();
   void _handle_savepoint();
   void _handle_runpoint();
+  void _handle_pozinfo();
   void _handle_setspin();
   void _handle_vup();
   void _handle_vdown();
@@ -100,6 +101,7 @@ private:
   static void _s_t2save()        { _instance->_handle_t2save(); }
   static void _s_savepoint()     { _instance->_handle_savepoint(); }
   static void _s_runpoint()      { _instance->_handle_runpoint(); }
+  static void _s_pozinfo()       { _instance->_handle_pozinfo(); }
   static void _s_setspin()       { _instance->_handle_setspin(); }
   static void _s_vup()           { _instance->_handle_vup(); }
   static void _s_vdown()         { _instance->_handle_vdown(); }

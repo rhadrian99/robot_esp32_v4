@@ -483,6 +483,12 @@ public:
     display.displayImage_async(IMAGES[25], .5);
   }
 
+  // Get current waiting point number (0 if none)
+  int get_current_point_waiting()
+  {
+    return current_point_waiting;
+  }
+
   void virtual _TOK()
   {
     if (feeder.index > 0)

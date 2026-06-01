@@ -8,6 +8,7 @@
 extern void infrared_menu(uint32_t _var, char _mode);
 extern void infrared_web_save_point(int poz);
 extern void infrared_web_run_point(int poz);
+extern int infrared_get_current_point();
 extern char mode;
 extern uint8_t servo_step;
 extern Brush motor_up;
@@ -102,6 +103,23 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       <button id="poz-btn" onclick="togglePoz()" style="flex:2;border:none;border-radius:10px;background:#0f3460;color:#e94560;font-size:15px;padding:12px;cursor:pointer;font-weight:bold">Poz 1</button>
       <button onclick="savePoz()" style="flex:1;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">SAVE</button>
       <button onclick="runPoz()" style="flex:1;border:none;border-radius:10px;background:#3a1a1a;color:#e94560;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">RUN</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;font-size:12px;text-align:center">
+      <div style="background:#0f3460;padding:8px;border-radius:6px">
+        <div style="color:#aaa;margin-bottom:4px">M1</div>
+        <div style="color:#e94560;font-weight:bold"><span id="poz-m1-spin">-</span></div>
+        <div style="color:#888;font-size:11px">Idx: <span id="poz-m1-idx">-</span></div>
+      </div>
+      <div style="background:#0f3460;padding:8px;border-radius:6px">
+        <div style="color:#aaa;margin-bottom:4px">M2</div>
+        <div style="color:#66dd66;font-weight:bold"><span id="poz-m2-spin">-</span></div>
+        <div style="color:#888;font-size:11px">Idx: <span id="poz-m2-idx">-</span></div>
+      </div>
+      <div style="background:#0f3460;padding:8px;border-radius:6px">
+        <div style="color:#aaa;margin-bottom:4px">Feeder</div>
+        <div style="color:#ffaa44;font-weight:bold"><span id="poz-feed-spd">-</span></div>
+        <div style="color:#888;font-size:11px">Idx: <span id="poz-feed-idx">-</span></div>
+      </div>
     </div>
   </div>
 
@@ -199,6 +217,25 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .then(t=>document.getElementById('status').textContent=t)
         .catch(()=>document.getElementById('status').textContent='run error');
     }
+    function updatePozInfo(){
+      fetch('/pozinfo')
+        .then(r=>r.json())
+        .then(d=>{
+          // Update Poz button if changed on remote
+          if(d.current_poz > 0 && d.current_poz <= 6){
+            _currentPoz = d.current_poz;
+            document.getElementById('poz-btn').textContent = 'Poz ' + _currentPoz;
+          }
+          // Update motor and feeder info
+          document.getElementById('poz-m1-spin').textContent = d.m1_spin;
+          document.getElementById('poz-m1-idx').textContent = d.m1_index;
+          document.getElementById('poz-m2-spin').textContent = d.m2_spin;
+          document.getElementById('poz-m2-idx').textContent = d.m2_index;
+          document.getElementById('poz-feed-spd').textContent = d.feeder_speed;
+          document.getElementById('poz-feed-idx').textContent = d.feeder_index;
+        })
+        .catch(()=>{});
+    }
     function toggleStep(){
       fetch('/step')
         .then(r=>r.json())
@@ -284,8 +321,9 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     }
     var pollInterval;
     function startPolling(){
-      pollInterval=setInterval(pollStatus,500);
+      pollInterval=setInterval(()=>{pollStatus();updatePozInfo();},500);
       pollStatus();
+      updatePozInfo();
     }
     function stopPolling(){
       if(pollInterval) clearInterval(pollInterval);
@@ -852,6 +890,7 @@ void WebControl::_register_routes()
   _server.on("/t2save",        HTTP_GET, _s_t2save);
   _server.on("/savepoint",     HTTP_GET, _s_savepoint);
   _server.on("/runpoint",      HTTP_GET, _s_runpoint);
+  _server.on("/pozinfo",       HTTP_GET, _s_pozinfo);
   _server.on("/setspin",       HTTP_GET, _s_setspin);
   _server.on("/vup",           HTTP_GET, _s_vup);
   _server.on("/vdown",         HTTP_GET, _s_vdown);
@@ -1201,6 +1240,46 @@ void WebControl::_handle_runpoint()
   }
   infrared_web_run_point(poz);
   _server.send(200, "text/plain", "Point" + String(poz) + " running");
+}
+
+void WebControl::_handle_pozinfo()
+{
+  // Return JSON with current position info
+  // motor_up/motor_down spin types: "TOPSPIN"(0), "SUPPORT"(2), "BACKSPIN"(0->switched), "NOSPIN"(3)
+  int current_poz = infrared_get_current_point();
+  
+  String spin_up_str = "";
+  String spin_down_str = "";
+  
+  if (motor_up.spin == Brush::TOPSPIN) {
+    spin_up_str = "TOPSPIN";
+  } else if (motor_up.spin == Brush::SUPPORT) {
+    spin_up_str = "SUPPORT";
+  } else if (motor_up.spin == Brush::BACKSPIN) {
+    spin_up_str = "BACKSPIN";
+  } else if (motor_up.spin == Brush::NOSPIN) {
+    spin_up_str = "NOSPIN";
+  }
+  
+  if (motor_down.spin == Brush::TOPSPIN) {
+    spin_down_str = "TOPSPIN";
+  } else if (motor_down.spin == Brush::SUPPORT) {
+    spin_down_str = "SUPPORT";
+  } else if (motor_down.spin == Brush::BACKSPIN) {
+    spin_down_str = "BACKSPIN";
+  } else if (motor_down.spin == Brush::NOSPIN) {
+    spin_down_str = "NOSPIN";
+  }
+  
+  char buffer[512];
+  sprintf(buffer, 
+    "{\"current_poz\":%d,\"m1_spin\":\"%s\",\"m1_index\":%d,\"m2_spin\":\"%s\",\"m2_index\":%d,\"feeder_index\":%d,\"feeder_speed\":%d}",
+    current_poz,
+    spin_up_str.c_str(), motor_up.index,
+    spin_down_str.c_str(), motor_down.index,
+    feeder.index, feeder.speed);
+  
+  _server.send(200, "application/json", buffer);
 }
 
 void WebControl::_handle_setspin()
