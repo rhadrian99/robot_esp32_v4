@@ -434,6 +434,55 @@ public:
     return nullptr;
   }
 
+  // Web UI: save current state as Point N (no timer — immediate save)
+  void web_save_point(int poz)
+  {
+    if (execute) return;
+    if (poz < 1 || poz > 6) return;
+
+    confirmation_ticker.detach();
+    blink_ticker.detach();
+    current_point_waiting = 0;
+    blink_state = false;
+
+    target_point Point;
+    Point._pan_pos = pan.read_pos();
+    Point._tilt_pos = tilt.read_pos();
+    Point._up = motor_up.speed;
+    Point._down = motor_down.speed;
+    Point.stepper_speed = feeder.speed;
+    Point.stepper_index = feeder.index;
+    Point.index_up = motor_up.index;
+    Point.index_down = motor_down.index;
+    Point.spin_up = motor_up.spin;
+    Point.spin_down = motor_down.spin;
+    Point.name = "Point" + String(poz);
+
+    target_point *pPoint = get_point_by_number(poz);
+    if (pPoint)
+    {
+      memcpy(pPoint, &Point, sizeof(target_point));
+      target_save_nvm(*pPoint);
+    }
+    display.displayImage_async(IMAGES[12], .5);
+  }
+
+  // Web UI: load and execute Point N (no timer check)
+  void web_run_point(int poz)
+  {
+    if (execute) return;
+    if (poz < 1 || poz > 6) return;
+
+    confirmation_ticker.detach();
+    blink_ticker.detach();
+    current_point_waiting = 0;
+    blink_state = false;
+
+    String point_name = "Point" + String(poz);
+    load_target_point(point_name);
+    display.displayImage_async(IMAGES[25], .5);
+  }
+
   void virtual _TOK()
   {
     if (feeder.index > 0)

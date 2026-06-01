@@ -153,6 +153,16 @@ void infrared_menu(uint32_t _var, char _mode)
 
 }
 
+void infrared_web_save_point(int poz)
+{
+  infrared_normal.web_save_point(poz);
+}
+
+void infrared_web_run_point(int poz)
+{
+  infrared_normal.web_run_point(poz);
+}
+
 
 
 #endif

@@ -6,6 +6,8 @@
 #include "LEDdisplay.h"
 
 extern void infrared_menu(uint32_t _var, char _mode);
+extern void infrared_web_save_point(int poz);
+extern void infrared_web_run_point(int poz);
 extern char mode;
 extern uint8_t servo_step;
 extern Brush motor_up;
@@ -96,6 +98,14 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <div class="card">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="poz-btn" onclick="togglePoz()" style="flex:2;border:none;border-radius:10px;background:#0f3460;color:#e94560;font-size:15px;padding:12px;cursor:pointer;font-weight:bold">Poz 1</button>
+      <button onclick="savePoz()" style="flex:1;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">SAVE</button>
+      <button onclick="runPoz()" style="flex:1;border:none;border-radius:10px;background:#3a1a1a;color:#e94560;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">RUN</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
         <span id="m1label" style="font-size:12px;color:#aaa;font-weight:bold">MAIN</span>
@@ -143,6 +153,16 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     </button>
   </div>
 
+  <div id="poz-save-modal" style="display:none;position:fixed;inset:0;background:#0008;z-index:999;align-items:center;justify-content:center">
+    <div style="background:#16213e;border-radius:14px;padding:24px 20px;max-width:280px;width:90%;text-align:center">
+      <p id="poz-modal-text" style="margin-bottom:20px;font-size:14px;line-height:1.5">Salvezi Poz?</p>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button onclick="pozModalOk()" style="border:none;border-radius:8px;background:#e94560;color:#fff;font-size:14px;padding:10px 24px;cursor:pointer">OK</button>
+        <button onclick="pozModalCancel()" style="border:none;border-radius:8px;background:#0f3460;color:#eee;font-size:14px;padding:10px 24px;cursor:pointer">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:#0008;z-index:999;align-items:center;justify-content:center">
     <div style="background:#16213e;border-radius:14px;padding:24px 20px;max-width:280px;width:90%;text-align:center">
       <p style="margin-bottom:20px;font-size:14px;line-height:1.5">Salvezi pozitia curenta PAN/TILT ca pozitie HOME?</p>
@@ -154,6 +174,31 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <script>
+    var _currentPoz = 1;
+    function togglePoz(){
+      _currentPoz = (_currentPoz % 6) + 1;
+      document.getElementById('poz-btn').textContent = 'Poz ' + _currentPoz;
+    }
+    function savePoz(){
+      document.getElementById('poz-modal-text').textContent = 'Salvezi Poz ' + _currentPoz + '?';
+      document.getElementById('poz-save-modal').style.display = 'flex';
+    }
+    function pozModalOk(){
+      document.getElementById('poz-save-modal').style.display = 'none';
+      fetch('/savepoint?poz=' + _currentPoz)
+        .then(r=>r.text())
+        .then(t=>document.getElementById('status').textContent=t)
+        .catch(()=>document.getElementById('status').textContent='save error');
+    }
+    function pozModalCancel(){
+      document.getElementById('poz-save-modal').style.display = 'none';
+    }
+    function runPoz(){
+      fetch('/runpoint?poz=' + _currentPoz)
+        .then(r=>r.text())
+        .then(t=>document.getElementById('status').textContent=t)
+        .catch(()=>document.getElementById('status').textContent='run error');
+    }
     function toggleStep(){
       fetch('/step')
         .then(r=>r.json())
@@ -805,6 +850,8 @@ void WebControl::_register_routes()
   _server.on("/mstatus",       HTTP_GET, _s_mstatus);
   _server.on("/t1save",        HTTP_GET, _s_t1save);
   _server.on("/t2save",        HTTP_GET, _s_t2save);
+  _server.on("/savepoint",     HTTP_GET, _s_savepoint);
+  _server.on("/runpoint",      HTTP_GET, _s_runpoint);
   _server.on("/setspin",       HTTP_GET, _s_setspin);
   _server.on("/vup",           HTTP_GET, _s_vup);
   _server.on("/vdown",         HTTP_GET, _s_vdown);
@@ -1126,6 +1173,34 @@ void WebControl::_handle_t2save()
   display.displayImage_async(IMAGES[12], 1); // ok save
   
   _server.send(200, "text/plain", "Support motor saved");
+}
+
+void WebControl::_handle_savepoint()
+{
+  int poz = 1;
+  if (_server.hasArg("poz"))
+    poz = _server.arg("poz").toInt();
+  if (poz < 1 || poz > 6)
+  {
+    _server.send(400, "text/plain", "Invalid poz");
+    return;
+  }
+  infrared_web_save_point(poz);
+  _server.send(200, "text/plain", "Point" + String(poz) + " saved");
+}
+
+void WebControl::_handle_runpoint()
+{
+  int poz = 1;
+  if (_server.hasArg("poz"))
+    poz = _server.arg("poz").toInt();
+  if (poz < 1 || poz > 6)
+  {
+    _server.send(400, "text/plain", "Invalid poz");
+    return;
+  }
+  infrared_web_run_point(poz);
+  _server.send(200, "text/plain", "Point" + String(poz) + " running");
 }
 
 void WebControl::_handle_setspin()

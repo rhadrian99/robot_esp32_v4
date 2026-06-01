@@ -24,13 +24,14 @@ Brush::Brush()
 void Brush::update_speeds(uint16_t _VAL[9],int initial_value, String spintype,int _step)
 {
   _VAL[0]=MOTOR_MIN;
-  
+  uint16_t multiplyer=1;
+
   if (initial_value<=MOTOR_MIN) initial_value=_VAL[1]; /// preserve old settings
   _VAL[0]=MOTOR_MIN;
   _VAL[1]=initial_value;
   for(int i=2;i<=8;i++)
   { 
-    _VAL[i]=2*_step+_VAL[i-1];
+    _VAL[i]=multiplyer*_step+_VAL[i-1];
   }
 
 }
@@ -283,7 +284,7 @@ void Brush::increase_speed()
   int microstep = MOTOR_STEP;
 
   if (spin == SUPPORT) { microstep = SUPPORT_STEP; }
-  if (spin == NOSPIN)  { microstep = MOTOR_STEP / 2; }
+  if (spin == NOSPIN)  { microstep = MOTOR_STEP_NOSPIN; }
   
   speed += microstep;
   if (index == 0) { 
@@ -321,7 +322,7 @@ void Brush::decrease_speed()
   int microstep = MOTOR_STEP;
 
   if (spin == SUPPORT) { microstep = SUPPORT_STEP; }
-  if (spin == NOSPIN)  { microstep = MOTOR_STEP / 2; }
+  if (spin == NOSPIN)  { microstep = MOTOR_STEP_NOSPIN; }
   
   speed -= microstep;
     

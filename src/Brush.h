@@ -21,7 +21,7 @@
 
 #define SUPPORT_STEP_SETUP 4
 #define MOTOR_STEP_SETUP 10
-#define MOTOR_STEP_NOSPIN 10
+#define MOTOR_STEP_NOSPIN 8
 
 
 class Brush
