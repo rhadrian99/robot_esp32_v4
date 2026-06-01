@@ -24,9 +24,11 @@ public:
 private:
   WebServer _server;
   DNSServer _dnsServer;
+  String uniqueSSID;  // Unique SSID generated from MAC address
 
   void _connect_wifi();
   void _register_routes();
+  void generateUniqueSSID();
 
   // HTTP handlers
   void _handle_root();

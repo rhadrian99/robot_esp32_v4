@@ -1,5 +1,6 @@
 #include "WebControl.h"
 #include <common.h>
+#include <esp_mac.h>
 #include "Brush.h"
 #include "StepperX.h"
 #include "ServoX.h"
@@ -29,13 +30,12 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Robot Control v6.4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:sans-serif;background:#1a1a2e;color:#eee;
          display:flex;flex-direction:column;align-items:center;
-         padding:16px;gap:14px;min-height:100vh}
+         padding:16px;gap:14px;min-height:100vh;overflow-y:auto}
     h2{letter-spacing:2px;font-size:18px}
     .card{background:#16213e;border-radius:14px;padding:14px;
           width:100%;max-width:320px}
@@ -58,7 +58,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     .slider-wrap{display:flex;flex-direction:column;gap:22px}
     .slider-item label{font-size:12px;color:#aaa;
                        display:flex;justify-content:space-between;margin-bottom:6px}
-    .slider-item input[type=range]{width:100%;accent-color:#e94560;height:24px;cursor:pointer}
+    .slider-item input[type=range]{width:100%;accent-color:#e94560;height:24px;cursor:pointer;touch-action:auto}
     .slider-item input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:#0f3460}
     .slider-item input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:#0f3460}
     .slider-item input[type=range]::-webkit-slider-thumb{margin-top:-4px}
@@ -282,7 +282,10 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       document.getElementById('poz-save-modal').style.display = 'none';
       fetch('/savepoint?poz=' + _currentPoz)
         .then(r=>r.text())
-        .then(t=>document.getElementById('status').textContent=t)
+        .then(t=>{
+          document.getElementById('status').textContent=t;
+          displayPozData(_currentPoz);
+        })
         .catch(()=>document.getElementById('status').textContent='save error');
     }
     function pozModalCancel(){
@@ -486,11 +489,11 @@ static const char FIRMWARE_UPDATE_PAGE[] PROGMEM = R"rawhtml(
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
 <title>Firmware Update</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px;overflow-y:auto}
 h2{color:#e94560;text-align:center;margin:12px 0 20px;font-size:18px}
 .card{background:#16213e;border-radius:12px;padding:18px;margin-bottom:12px}
 .lbl{font-size:12px;color:#888;margin-bottom:8px}
@@ -569,13 +572,13 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
   <title>Settings</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:sans-serif;background:#1a1a2e;color:#eee;
+    body{font-family:sans-serif;background:#1a1a2e;color:#eee;touch-action:manipulation;
          display:flex;flex-direction:column;align-items:center;
-         padding:20px;gap:16px;min-height:100vh}
+         padding:20px;gap:16px;min-height:100vh;overflow-y:auto}
     h2{letter-spacing:2px;font-size:18px;margin-bottom:4px}
     .card{background:#16213e;border-radius:14px;padding:16px 20px;
           width:100%;max-width:340px}
@@ -829,11 +832,11 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
   <title>Motor Settings</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px}
+    body{font-family:sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px;overflow-y:auto}
     h2{color:#e94560;text-align:center;margin:12px 0 20px;font-size:18px}
     .card{background:#16213e;border-radius:12px;padding:18px;margin-bottom:12px}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
@@ -859,7 +862,7 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
 <h2>Motor Speed Setup</h2>
 
 <div class="card">
-  <div style="text-align:center;margin-bottom:16px">
+  <div style="text-align:center;margin-bottom:12px">
     <div style="font-size:12px;color:#888;margin-bottom:8px">SPIN MODE</div>
     <button class="btn" id="spin-btn" style="background:#e94560;color:#0f0f1a;font-size:16px;font-weight:bold;padding:12px 24px;border-radius:10px;cursor:pointer" onclick="toggleSpin()">TOPSPIN</button>
   </div>
@@ -990,10 +993,23 @@ WebControl::WebControl() : _server(80)
   _instance = this;
 }
 
+void WebControl::generateUniqueSSID()
+{
+  // Generate unique SSID from chip's MAC address (last 2 bytes)
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "TTROBOT_%02X%02X", mac[4], mac[5]);
+  uniqueSSID = String(buffer);
+}
+
 void WebControl::_connect_wifi()
 {
+  // Generate unique SSID from chip's MAC address (last 2 bytes)
+  generateUniqueSSID();
+  
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(WIFI_SSID, WIFI_PASS);
+  WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS);
   IPAddress apIP(192, 168, 4, 1);
   IPAddress apSubnet(255, 255, 255, 0);
   WiFi.softAPConfig(apIP, apIP, apSubnet);
@@ -1002,7 +1018,7 @@ void WebControl::_connect_wifi()
   _dnsServer.start(53, "*", apIP);
   
   Serial.printf("WiFi AP started — SSID: %s  http://%s\n",
-                WIFI_SSID, WiFi.softAPIP().toString().c_str());
+                uniqueSSID.c_str(), WiFi.softAPIP().toString().c_str());
   Serial.println("DNS server started on port 53 (captive portal mode)");
 }
 
