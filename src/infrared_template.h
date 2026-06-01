@@ -337,8 +337,8 @@ public:
     motor_down.speed = POINT._down;
     motor_up.index = POINT.index_up;
     motor_down.index = POINT.index_down;
-    motor_up.spin = POINT.spin_up;
-    motor_down.spin = POINT.spin_down;
+    motor_up.spin = (Brush::_spinType)POINT.spin_up;
+    motor_down.spin = (Brush::_spinType)POINT.spin_down;
 
     if (motor_up.spin == Brush::TOPSPIN)
     {

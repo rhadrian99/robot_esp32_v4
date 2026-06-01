@@ -1066,9 +1066,9 @@ void WebControl::_handle_t1save()
   } else if (spinMode == Brush::BACKSPIN) {
     mainMotor->update_speeds(mainMotor->_SPEEDS, mainMotor->speed, "BACKSPIN", MOTOR_STEP);
   } else if (spinMode == Brush::NOSPIN) {
-    mainMotor->update_speeds_nospin(mainMotor->_SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
+    mainMotor->update_speeds(mainMotor->_SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
     // NOSPIN: sync support motor with same speeds
-    motor_down.update_speeds_nospin(motor_down._SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
+    motor_down.update_speeds(motor_down._SPEEDS, mainMotor->speed, "NOSPIN", SUPPORT_STEP);
   }
   
   // Save to NVS and reload
@@ -1113,8 +1113,8 @@ void WebControl::_handle_t2save()
     supportMotor->update_speeds(supportMotor->_SPEEDS, supportMotor->speed, "SUPPORT", SUPPORT_STEP);
   } else if (spinMode == Brush::NOSPIN) {
     // NOSPIN: T2 is disabled anyway, but sync both motors
-    motor_up.update_speeds_nospin(motor_up._SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
-    motor_down.update_speeds_nospin(motor_down._SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
+    motor_up.update_speeds(motor_up._SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
+    motor_down.update_speeds(motor_down._SPEEDS, supportMotor->speed, "NOSPIN", SUPPORT_STEP);
   }
   
   // Save to NVS and reload

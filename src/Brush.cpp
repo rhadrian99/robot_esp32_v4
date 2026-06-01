@@ -35,50 +35,51 @@ void Brush::update_speeds(uint16_t _VAL[9],int initial_value, String spintype,in
 
 }
 
-void Brush::update_speeds_nospin(uint16_t _VAL[9],int initial_value, String spintype,int _step)
-{
-  _VAL[0]=MOTOR_MIN;
-  
-  if (initial_value<=MOTOR_MIN) initial_value=_VAL[1]; /// preserve old settings
-  _VAL[0]=MOTOR_MIN;
-  _VAL[1]=initial_value;
-  for(int i=2;i<=8;i++)
-  { 
-    _VAL[i]=2*_step+_VAL[i-1];
-  }
 
+
+
+
+void Brush::updateSpinType()
+{
+  // Convert enum spin value to string spintype
+  switch(spin) {
+    case TOPSPIN:
+      spintype = "TOPSPIN";
+      break;
+    case BACKSPIN:
+      spintype = "BACKSPIN";
+      break;
+    case NOSPIN:
+      spintype = "NOSPIN";
+      break;
+    case SUPPORT:
+      spintype = "SUPPORT";
+      break;
+    default:
+      spintype = "UNKNOWN";
+  }
 }
 
-
-
-void Brush::init(uint8_t _pin,_spinType _spin, String name)    
+void Brush::init(uint8_t _pin, _spinType _spin, String name)    
 {
-//pinMode(_pin, OUTPUT);  
-update_speeds(_TOPSPIN,1240,"TOPSPIN",MOTOR_STEP);
-update_speeds(_BACKSPIN,1240,"BACKSPIN",MOTOR_STEP);
+  //pinMode(_pin, OUTPUT);  
+  update_speeds(_TOPSPIN, 1240, "TOPSPIN", MOTOR_STEP);
+  update_speeds(_BACKSPIN, 1240, "BACKSPIN", MOTOR_STEP);
+  update_speeds(_SUPPORT_UP, 1180, "SUPORT_UP", SUPPORT_STEP);
+  update_speeds(_SUPPORT_DOWN, 1180, "SUPORT_DOWN", SUPPORT_STEP);
 
-update_speeds(_SUPPORT_UP,1180,"SUPORT_UP",SUPPORT_STEP);
-update_speeds(_SUPPORT_DOWN,1180,"SUPORT_DOWN",SUPPORT_STEP);
+  motor.attach(_pin, 1000, 2000);
+  motor.setTimerWidth(10);
+  motor.setPeriodHertz(50);
 
-
-
-motor.attach(_pin,1000,2000);
-//motor.attach(_pin);
-
-motor.setTimerWidth(10); /// mandatory to test for each ESC driver otherwise brushless motors do not move
-//motor.setTimerWidth(12); /// mandatory to test for each ESC driver otherwise brushless motors do not move
-motor.setPeriodHertz(50); ///  mandatory
-//motor.setPeriodHertz(50); ///  mandatory
-
- index=0;
- spin = _spin;
- speed=MOTOR_MIN;
- motor_on=false;
- 
- motor_position=name;
- set_spin(_spin);
- set_speed();
- return;   
+  index = 0;
+  spin = _spin;
+  speed = MOTOR_MIN;
+  motor_on = false;
+  motor_position = name;
+  
+  set_spin((uint8_t)_spin);
+  set_speed();
 }
 
 /// if force==true to save initial speeds in flash memory
@@ -258,99 +259,90 @@ void Brush::load_data_as()
 
 void Brush::set_spin(uint8_t _spin)
 {
-this->spin = _spin;
-
-if (spin==Brush::TOPSPIN) {spintype="TOPSPIN";}
-if (spin==Brush::BACKSPIN) {spintype="BACKSPIN";}
-if (spin==Brush::NOSPIN) {spintype="NOSPIN";}
-if (spin==Brush::SUPPORT) {spintype="SUPPORT";}
-
-//save_data_as();
-    load_data_as();
-    index=0;
-    speed= _SPEEDS[index];
-    set_speed();
- }
+  this->spin = (_spinType)_spin;
+  updateSpinType();
+  load_data_as();
+  index = 0;
+  speed = _SPEEDS[index];
+  set_speed();
+}
 
 
 void Brush::set_spin_after_load(uint8_t _spin)
 {
-this->spin = _spin;
-
-if (spin==Brush::TOPSPIN) {spintype="TOPSPIN";}
-if (spin==Brush::BACKSPIN) {spintype="BACKSPIN";}
-if (spin==Brush::NOSPIN) {spintype="NOSPIN";}
-if (spin==Brush::SUPPORT) {spintype="SUPPORT";}
-
-    load_data_as();
-    set_speed();
- }
+  this->spin = (_spinType)_spin;
+  updateSpinType();
+  load_data_as();
+  set_speed();
+}
 
 
 // maximum 8 levels of speed
 void Brush::increase_speed()
 {
-  int microstep=MOTOR_STEP;
+  int microstep = MOTOR_STEP;
 
-  if (spin==Brush::SUPPORT) {microstep=SUPPORT_STEP;}
-  if (spin==Brush::NOSPIN)  {microstep=MOTOR_STEP/2;}
-  //index++;
-  speed+= microstep;
-  if (index==0) {index++;this->speed=_SPEEDS[index]; set_speed();return;} // takes first value from array 
+  if (spin == SUPPORT) { microstep = SUPPORT_STEP; }
+  if (spin == NOSPIN)  { microstep = MOTOR_STEP / 2; }
+  
+  speed += microstep;
+  if (index == 0) { 
+    index++; 
+    this->speed = _SPEEDS[index]; 
+    set_speed();
+    return;
+  }
 
-  if (speed==_SPEEDS[index+1])
-  {
-    index++; /// show active the next led
-    if (index>8) {
-      index=8;
-      speed= _SPEEDS[8]; 
+  // Fixed: bounds check before accessing array
+  if (index < 8 && speed >= _SPEEDS[index + 1]) {
+    index++;
+    if (index > 8) {
+      index = 8;
+      speed = _SPEEDS[8]; 
     }
   }
 
-  if (speed>_SPEEDS[8])
-  {
-    index=8;
-    speed= _SPEEDS[8]; 
+  if (speed > _SPEEDS[8]) {
+    index = 8;
+    speed = _SPEEDS[8]; 
   }
- 
- 
 
- set_speed();     
- Serial.print(motor_position + F(" speed = "));
- Serial.println(speed, DEC);
- Serial.print(motor_position+F(" ") +spintype+F(" index = ") );Serial.println(index, DEC);
- Serial.print(F("Motor step= "));Serial.println(microstep, DEC);
+  set_speed();     
+  Serial.print(motor_position + F(" speed = "));
+  Serial.println(speed, DEC);
+  Serial.print(motor_position + F(" ") + spintype + F(" index = "));
+  Serial.println(index, DEC);
+  Serial.print(F("Motor step= "));
+  Serial.println(microstep, DEC);
 }
 
-void Brush:: decrease_speed()
+void Brush::decrease_speed()
 {
-  int microstep=MOTOR_STEP;
+  int microstep = MOTOR_STEP;
 
-  if (spin==Brush::SUPPORT) {microstep=SUPPORT_STEP;}
-  if (spin==Brush::NOSPIN)  {microstep=MOTOR_STEP/2;}
-    speed-=microstep;
+  if (spin == SUPPORT) { microstep = SUPPORT_STEP; }
+  if (spin == NOSPIN)  { microstep = MOTOR_STEP / 2; }
+  
+  speed -= microstep;
     
-    if (speed<_SPEEDS[1])
-      {
-        index=0;
-        speed= _SPEEDS[0]; 
-        set_speed();
-        return;
-
-      }
+  if (speed < _SPEEDS[1]) {
+    index = 0;
+    speed = _SPEEDS[0]; 
+    set_speed();
+    return;
+  }
       
-    if (speed<_SPEEDS[index])
-    {
-      index--; /// show active the next led
-      
-    }
+  if (speed < _SPEEDS[index]) {
+    index--;
+  }
 
-   
-   set_speed();
-   Serial.print(motor_position + F(" speed = "));
-   Serial.println(speed, DEC);
-   Serial.print(motor_position+F(" ") +spintype+F(" index = ") );Serial.println(index, DEC);
-   Serial.print(F("Motor step= "));Serial.println(microstep, DEC);
+  set_speed();
+  Serial.print(motor_position + F(" speed = "));
+  Serial.println(speed, DEC);
+  Serial.print(motor_position + F(" ") + spintype + F(" index = "));
+  Serial.println(index, DEC);
+  Serial.print(F("Motor step= "));
+  Serial.println(microstep, DEC);
 }
 
 
@@ -400,12 +392,12 @@ void Brush:: stop()
 }
 
 
-void Brush:: increase_speed(uint8_t val)
+void Brush::increase_speed(uint8_t val)
 {
-  if (index==0) { index=1; this->speed=_SPEEDS[index];}
+  if (index == 0) { index = 1; this->speed = _SPEEDS[index]; }
   
-  this->speed+=val;
-  if (this->speed>MOTOR_MAX) {this->speed=MOTOR_MAX;}
+  this->speed += val;
+  if (this->speed > MOTOR_MAX) { this->speed = MOTOR_MAX; }
   
   // Update index to match current speed value
   for (int i = 1; i <= 8; i++) {
@@ -416,33 +408,30 @@ void Brush:: increase_speed(uint8_t val)
     }
   }
     
-   set_speed2(this->speed);
-   DEBUG(motor_position + F(" speed = "),this->speed,true );
-   Serial.println();
-      
+  set_speed2(this->speed);
+  DEBUG(motor_position + F(" speed = "), this->speed, true);
+  Serial.println();
 }
 
-void Brush:: decrease_speed(uint8_t val)
+void Brush::decrease_speed(uint8_t val)
 {
-    if (index==0) { index=1; this->speed=_SPEEDS[index];}
-    
-    this->speed-=val;
-    if (this->speed<MOTOR_MIN) {this->speed=MOTOR_MIN;}
-    
-    // Update index to match current speed value
-    for (int i = 8; i >= 1; i--) {
-      if (this->speed <= _SPEEDS[i]) {
-        index = i;
-      } else {
-        break;
-      }
+  if (index == 0) { index = 1; this->speed = _SPEEDS[index]; }
+  
+  this->speed -= val;
+  if (this->speed < MOTOR_MIN) { this->speed = MOTOR_MIN; }
+  
+  // Update index to match current speed value
+  for (int i = 8; i >= 1; i--) {
+    if (this->speed <= _SPEEDS[i]) {
+      index = i;
+    } else {
+      break;
     }
-   
-   set_speed2(this->speed);
-   
-   DEBUG(motor_position + F(" speed = "),this->speed,true );
-   Serial.println();
-      
+  }
+  
+  set_speed2(this->speed);
+  DEBUG(motor_position + F(" speed = "), this->speed, true);
+  Serial.println();
 }
 
 

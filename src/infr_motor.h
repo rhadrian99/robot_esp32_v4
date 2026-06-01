@@ -23,9 +23,9 @@ class infr_motor: public infrared_template_empty
         motor_up.update_speeds(motor_up._SPEEDS,motor_up.speed,"SUPPORT",SUPPORT_STEP);
       }
 
-      if (motor_up.spin==Brush::NOSPIN)
+      if (motor_up.spin == Brush::NOSPIN)
       {
-        motor_up.update_speeds_nospin(motor_up._SPEEDS,motor_up.speed,"NOSPIN",SUPPORT_STEP);
+        motor_up.update_speeds(motor_up._SPEEDS, motor_up.speed, "NOSPIN", SUPPORT_STEP);
       }
     
       motor_up.save_data_as();
