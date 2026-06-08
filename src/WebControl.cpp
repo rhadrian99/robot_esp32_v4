@@ -75,7 +75,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
-  <div class="card">
+  <div id="card-servo" class="card">
     <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px">
       <button onclick="confirmSavePos()" style="display:none;border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">&#128190;</button>
       <button id="btn-step" onclick="toggleStep()" style="display:none;border:none;border-radius:8px;background:#0f3460;color:#e94560;font-size:22px;padding:12px 20px;cursor:pointer;font-weight:bold">6&#176;</button>
@@ -101,11 +101,11 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
-  <div class="card">
+  <div id="card-poz" class="card">
     <div style="display:flex;align-items:center;gap:8px">
       <button id="poz-btn" onclick="togglePoz()" style="flex:2;border:none;border-radius:10px;background:#0f3460;color:#e94560;font-size:15px;padding:12px;cursor:pointer;font-weight:bold">Poz 1</button>
       <button onclick="savePoz()" style="flex:1;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">SAVE</button>
-      <button onclick="runPoz()" style="flex:1;border:none;border-radius:10px;background:#3a1a1a;color:#e94560;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">RUN</button>
+      <button id="poz-run-btn" onclick="runPoz()" style="flex:1;border:none;border-radius:10px;background:#3a1a1a;color:#e94560;font-size:13px;padding:12px;cursor:pointer;font-weight:bold">RUN</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;font-size:12px;text-align:center">
       <div style="background:#0f3460;padding:8px;border-radius:6px">
@@ -126,7 +126,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
-  <div class="card">
+  <div id="card-motors" class="card">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
         <span id="m1label" style="font-size:12px;color:#aaa;font-weight:bold">MAIN</span>
@@ -293,13 +293,45 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       document.getElementById('poz-save-modal').style.display = 'none';
     }
     function runPoz(){
-      confirmSound();
-      // Data already displayed from togglePoz, just execute
-      _viewingSavedPoz = false;  // Switch back to live status mode after running
-      fetch('/runpoint?poz=' + _currentPoz)
-        .then(r=>r.text())
-        .then(t=>document.getElementById('status').textContent=t)
-        .catch(()=>document.getElementById('status').textContent='run error');
+      if(_pozRunStopState==='RUN'){
+        confirmSound();
+        // Data already displayed from togglePoz, just execute
+        _viewingSavedPoz = false;  // Switch back to live status mode after running
+        fetch('/runpoint?poz=' + _currentPoz)
+          .then(r=>r.text())
+          .then(t=>{
+            document.getElementById('status').textContent=t;
+            setPozRunButtonState(true);
+            pollStatus();
+          })
+          .catch(()=>document.getElementById('status').textContent='run error');
+      } else {
+        errorSound();
+        // STOP from Poz section: stop all motors including feeder
+        fetch('/power')
+          .then(r=>r.text())
+          .then(t=>{
+            document.getElementById('status').textContent=t;
+            setPozRunButtonState(false);
+            pollStatus();
+          })
+          .catch(()=>document.getElementById('status').textContent='stop error');
+      }
+    }
+    var _pozRunStopState = 'RUN';
+    function setPozRunButtonState(running){
+      _pozRunStopState = running ? 'STOP' : 'RUN';
+      var btn = document.getElementById('poz-run-btn');
+      if(!btn) return;
+      btn.textContent = _pozRunStopState;
+      btn.style.background = running ? '#7b1f1f' : '#3a1a1a';
+      btn.style.color = '#e94560';
+      var pozBtn = document.getElementById('poz-btn');
+      if(pozBtn){
+        pozBtn.disabled = running;
+        pozBtn.style.opacity = running ? '0.4' : '1';
+        pozBtn.style.cursor = running ? 'not-allowed' : 'pointer';
+      }
     }
     function updatePozInfo(){
       fetch('/pozinfo')
@@ -345,6 +377,21 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>{});
     }
     var _runStopState = 'RUN';
+    function setSectionsEnabled(enabled){
+      ['card-servo','card-poz','card-motors'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(!el) return;
+        el.style.opacity=enabled?'1':'0.35';
+        el.style.pointerEvents=enabled?'auto':'none';
+      });
+    }
+    function setSeqButtonEnabled(enabled){
+      var btn = document.getElementById('seq-btn');
+      if(!btn) return;
+      btn.disabled = !enabled;
+      btn.style.opacity = enabled ? '1' : '0.4';
+      btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+    }
     function toggleRunStop(){
       clickSound();
       // Send command to /runstop to toggle execute state on IR
@@ -358,6 +405,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           // Update button text based on running state
           _runStopState = d.running ? 'STOP' : 'RUN';
           document.getElementById('run-stop-btn').textContent = _runStopState;
+          setSeqButtonEnabled(!d.running);
+          setSectionsEnabled(!d.running);
         })
         .catch(()=>{});
     }
@@ -440,6 +489,10 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           document.getElementById('m1val').textContent=(d.m1_vpos!==undefined?d.m1_vpos:d.m1);
           document.getElementById('m2val').textContent=nospin?(d.m1_vpos!==undefined?d.m1_vpos:d.m1):(d.m2_vpos!==undefined?d.m2_vpos:d.m2);
           var motorsOff=(d.m1===0 && d.m2===0);
+          // Keep Poz RUN/STOP button aligned with actual motor activity.
+          if(motorsOff && d.f===0){
+            setPozRunButtonState(false);
+          }
           setSettingsButtonsEnabled(motorsOff);
           var frow=document.getElementById('f-row');
           frow.style.opacity=motorsOff?'0.3':'1';
@@ -473,6 +526,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           // Update run/stop button
           _runStopState = d.running ? 'STOP' : 'RUN';
           document.getElementById('run-stop-btn').textContent = _runStopState;
+          setSeqButtonEnabled(!d.running);
+          setSectionsEnabled(!d.running);
         })
         .catch(()=>{});
     }
