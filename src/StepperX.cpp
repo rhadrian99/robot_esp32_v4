@@ -36,9 +36,11 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
   if (_stepper) {
     _stepper->setDirectionPin(_dirPin,true);
 
-    _stepper->setAcceleration(10000);
-    _stepper->setSpeedInHz(1000);
+    //_stepper->setAcceleration(10000);
+    //_stepper->setSpeedInHz(1000);
     
+    _stepper->setAcceleration(8000);
+    _stepper->setSpeedInHz(800);
   }
    timeout_const=200;
    directie=-1; // -1 = normal, 1 = reversed

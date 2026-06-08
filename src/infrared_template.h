@@ -830,7 +830,7 @@ public:
       case 4:
         pos(*get_point_by_number(1), 600);
         pos(*get_point_by_number(1), time);
-        pos(*get_point_by_number(3), 600);
+        pos(*get_point_by_number(3), 400);
         pos(*get_point_by_number(3), time);
         break;
 

@@ -1,4 +1,4 @@
-#include "WebControl.h"
+﻿#include "WebControl.h"
 #include <common.h>
 #include <esp_mac.h>
 #include "Brush.h"
@@ -24,7 +24,7 @@ extern LEDdisplay display;
 
 WebControl *WebControl::_instance = nullptr;
 
-// ── HTML page served from flash ─────────────────────────────────────────────
+// â”€â”€ HTML page served from flash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
 <html lang="ro">
@@ -207,7 +207,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
   </div>
 
   <script>
-    // ── Audio feedback functions ──
+    // â”€â”€ Audio feedback functions â”€â”€
     let audioContext = null;
     function initAudio(){
       if(!audioContext){
@@ -331,6 +331,18 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         pozBtn.disabled = running;
         pozBtn.style.opacity = running ? '0.4' : '1';
         pozBtn.style.cursor = running ? 'not-allowed' : 'pointer';
+      }
+      var seqBtn = document.getElementById('seq-btn');
+      if(seqBtn){
+        seqBtn.disabled = running;
+        seqBtn.style.opacity = running ? '0.4' : '1';
+        seqBtn.style.cursor = running ? 'not-allowed' : 'pointer';
+      }
+      var runStopBtn = document.getElementById('run-stop-btn');
+      if(runStopBtn){
+        runStopBtn.disabled = running;
+        runStopBtn.style.opacity = running ? '0.4' : '1';
+        runStopBtn.style.cursor = running ? 'not-allowed' : 'pointer';
       }
     }
     function updatePozInfo(){
@@ -548,9 +560,9 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 </body>
 </html>
 )rawhtml";
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── Firmware Update page ──────────────────────────────────────────────────────
+// â”€â”€ Firmware Update page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static const char FIRMWARE_UPDATE_PAGE[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
 <html>
@@ -631,9 +643,9 @@ function uploadFw(){
 </body>
 </html>
 )rawhtml";
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── Settings page ─────────────────────────────────────────────────────────────
+// â”€â”€ Settings page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
 <html lang="ro">
@@ -806,7 +818,7 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
         if(d.pan!==undefined)  document.getElementById('s-pan-val').textContent=d.pan;
         if(d.tilt!==undefined) document.getElementById('s-tilt-val').textContent=d.tilt;
         document.getElementById('status').textContent='ready';
-        if(d.step!==undefined) document.getElementById('s-step-btn').textContent=d.step+'°';
+        if(d.step!==undefined) document.getElementById('s-step-btn').textContent=d.step+'\u00b0';
       }).catch(()=>{document.getElementById('status').textContent='error loading';});
 
     function confirmSave(){
@@ -863,7 +875,7 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
     function sToggleStep(){
       fetch('/step')
         .then(r=>r.json())
-        .then(d=>document.getElementById('s-step-btn').textContent=d.step+'°')
+        .then(d=>document.getElementById('s-step-btn').textContent=d.step+'\u00b0')
         .catch(()=>{});
     }
     function gotoLimit(axis,lim){
@@ -891,9 +903,9 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
 </body>
 </html>
 )rawhtml";
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── Motor Settings page ───────────────────────────────────────────────────────
+// â”€â”€ Motor Settings page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
 <html lang="ro">
@@ -939,20 +951,20 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
   <div class="row">
     <div class="col">
       <span class="col-title">MAIN</span>
-      <button class="btn btn-up-down" onclick="incMain()">▲</button>
+      <button class="btn btn-up-down" onclick="incMain()">&#9650;</button>
       <div class="display-box">
         <div class="display" id="main-val">-</div>
       </div>
-      <button class="btn btn-up-down" onclick="decMain()">▼</button>
+      <button class="btn btn-up-down" onclick="decMain()">&#9660;</button>
       <button class="btn btn-save" onclick="saveMain()">SAVE T1</button>
     </div>
     <div class="col">
       <span class="col-title">SUPPORT</span>
-      <button class="btn btn-up-down" id="pup-btn" onclick="incSupp()">▲</button>
+      <button class="btn btn-up-down" id="pup-btn" onclick="incSupp()">&#9650;</button>
       <div class="display-box">
         <div class="display" id="supp-val">-</div>
       </div>
-      <button class="btn btn-up-down" id="pdown-btn" onclick="decSupp()">▼</button>
+      <button class="btn btn-up-down" id="pdown-btn" onclick="decSupp()">&#9660;</button>
       <button class="btn btn-save" id="t2-btn" onclick="saveSupp()">SAVE T2</button>
     </div>
   </div>
@@ -975,7 +987,7 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
     </table>
   </div>
 </div>
-<button class="back" onclick="window.location='/'">◄ Inapoi</button>
+<button class="back" onclick="window.location='/'">&#9668; Inapoi</button>
 <div id="status" style="text-align:center;font-size:12px;color:#666;margin-top:16px">ready</div>
 
 <script>
@@ -1053,7 +1065,7 @@ poll();
 </body>
 </html>
 )rawhtml";
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 WebControl::WebControl() : _server(80)
 {
@@ -1084,7 +1096,7 @@ void WebControl::_connect_wifi()
   // Start DNS server - redirects ALL DNS queries to AP IP
   _dnsServer.start(53, "*", apIP);
   
-  Serial.printf("WiFi AP started — SSID: %s  http://%s\n",
+  Serial.printf("WiFi AP started â€” SSID: %s  http://%s\n",
                 uniqueSSID.c_str(), WiFi.softAPIP().toString().c_str());
   Serial.println("DNS server started on port 53 (captive portal mode)");
 }
@@ -1147,7 +1159,7 @@ void WebControl::_register_routes()
   _server.onNotFound(_s_captive_portal);
 }
 
-// ── HTTP handlers ─────────────────────────────────────────────────────────────
+// â”€â”€ HTTP handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void WebControl::_handle_root()
 {
@@ -1240,7 +1252,7 @@ void WebControl::_handle_update_upload()
   HTTPUpload& upload = _server.upload();
   
   if (upload.status == UPLOAD_FILE_START) {
-    // Start of upload — validate header and begin update
+    // Start of upload â€” validate header and begin update
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
       Update.printError(Serial);
       return;
@@ -1248,9 +1260,9 @@ void WebControl::_handle_update_upload()
     Serial.printf("[OTA] Upload start: %s\n", upload.filename.c_str());
   }
   else if (upload.status == UPLOAD_FILE_WRITE) {
-    // Chunk received — validate magic byte and write
+    // Chunk received â€” validate magic byte and write
     if (upload.totalSize == 0 && upload.currentSize < 10) {
-      // First chunk — validate ESP32 header (magic byte 0xE9)
+      // First chunk â€” validate ESP32 header (magic byte 0xE9)
       if (upload.buf[0] != 0xE9) {
         Update.abort();
         Serial.println("[OTA] ERROR: Invalid magic byte - not an ESP32 firmware!");
@@ -1267,7 +1279,7 @@ void WebControl::_handle_update_upload()
                   upload.currentSize, upload.totalSize / 1024);
   }
   else if (upload.status == UPLOAD_FILE_END) {
-    // Upload complete — finalize and restart
+    // Upload complete â€” finalize and restart
     if (Update.end(true)) {
       Serial.printf("[OTA] SUCCESS: %u bytes uploaded. Restarting...\n", upload.totalSize);
       _server.send(200, "text/plain", "Update OK, rebooting...");
@@ -1888,7 +1900,7 @@ void WebControl::_handle_status()
   else if (motor_up.spin == Brush::NOSPIN)  spin = "NOSPIN";
 
   // La BACKSPIN: slider1 controleaza motor_down, slider2 controleaza motor_up
-  // → swap m1/m2 in status ca sliderele sa reflecte ce controleaza
+  // â†’ swap m1/m2 in status ca sliderele sa reflecte ce controleaza
   int m1idx = motor_up.index;
   int m2idx = motor_down.index;
   float m1_vpos = motor_up.getVirtualPosition();
@@ -1921,7 +1933,7 @@ void WebControl::_handle_captive_portal()
   _server.send(302, "text/plain", "Redirecting to Robot Control");
 }
 
-// ── FreeRTOS task ─────────────────────────────────────────────────────────────
+// â”€â”€ FreeRTOS task â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void WebControl::_task(void *param)
 {
@@ -1943,6 +1955,7 @@ void WebControl::_task(void *param)
 
 void WebControl::begin()
 {
-  // Core 0, priority 1 — same core as IRTask but lower priority
+  // Core 0, priority 1 â€” same core as IRTask but lower priority
   xTaskCreatePinnedToCore(_task, "WebControl", 8192, this, 1, nullptr, 0);
 }
+
