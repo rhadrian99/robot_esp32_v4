@@ -218,7 +218,7 @@ void infrared_template_empty::menu(uint32_t _var)
     case hGuide:       _TInfo();  break;  // reset
     
     case hB:       _TB();  break;  // reset
-    case hC:       _TOK();  break;  // reset
+    case hC:       _TC();  break;  // reset
     case hD:       _TD();  break;  // reset
   
     default:

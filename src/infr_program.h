@@ -152,6 +152,16 @@ public:
   {
       if (execute==false) //if is not active programming mode
       {
+        
+      }
+   
+  }
+
+void _TC() override
+  {
+     Serial.print(F("Mode: "));Serial.println(mode);  
+    if (execute==false) //if is not active programming mode
+      {
         switch_program(mode);
         tempo_empty(10);
         display.show_char(mode,0.5); // arata ca s-au memorat valorile
@@ -159,6 +169,7 @@ public:
       }
    
   }
+
 
   void _TPower() override
   {

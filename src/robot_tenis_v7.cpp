@@ -68,7 +68,7 @@ void receive_ir()
       {
         last_ir_value = receive_value;
         last_ir_time = now;
-        //DEBUG(F("IR value: "), receive_value, false);
+        DEBUG(F("IR value: "), receive_value, false);
         infrared_menu(receive_value, mode);
       }
     }
@@ -87,8 +87,8 @@ void IRTask(void *parameter)
 void setup()
 {
 
-  Serial.begin(115200);
-  Serial.flush();
+  SERIAL_BEGIN(115200);
+  SERIAL_FLUSH();
 
   // Init ESC motors FIRST — motor.attach() starts the ESC boot sequence (~3-4s hardware beep).
   // By calling init() before NVS ops, ESC boot runs in parallel with the rest of setup().

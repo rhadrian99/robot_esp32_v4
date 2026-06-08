@@ -44,12 +44,10 @@ void _T5() override
       display.displayImage_async(IMAGES[10],2.0);
       // NO show_display_status() - avoid conflict with async display
     }
+  
   void _TOK() override
   {
-      switch_program(mode);
-      tempo_empty(5);
-      display.show_char(mode,0.5); // arata ca s-au memorat valorile
-      show_display_status();
+
   }
   void virtual _TLEFT()
   {
@@ -124,17 +122,15 @@ void _T5() override
         
   }
   
-  void virtual _TC()
+  void virtual _TC() override
   {
+     Serial.print(F("Mode: "));Serial.println(mode);
+
+    switch_program(mode);
+      tempo_empty(5);
+      display.show_char(mode,0.5); // arata ca s-au memorat valorile
+      show_display_status();
     
-    
-    //pan.startMove(0);
-    //tilt.startMove(0);
-    //tilt.move(0,true,true);
-    //display.displayImage(IMAGES[10],0.5);
-    //show_display_status();
-    
-  
    
   }
 

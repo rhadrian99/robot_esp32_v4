@@ -82,8 +82,15 @@ class infr_motor: public infrared_template_empty
   void _TOK() override
   {
       execute=false;
+      
+            
+  }
+
+  void _TC() override
+  {
+      execute=false;
       switch_program(mode);
-      //Serial.print(F("Mode: "));Serial.println(mode);
+      Serial.print(F("Mode: "));Serial.println(mode);
       tempo_empty(5);
       display.show_char(mode,0.5); //arata ca s-au memorat valorile
       show_display_status();

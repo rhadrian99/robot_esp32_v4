@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motor Settings</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;background:#0f0f1a;color:#e0e0e0;padding:16px}
+    h2{color:#e94560;text-align:center;margin:12px 0 20px;font-size:18px}
+    .card{background:#16213e;border-radius:12px;padding:18px;margin-bottom:12px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .col-title{font-size:13px;color:#888;font-weight:bold;letter-spacing:1px}
+    .btn{border:none;border-radius:10px;cursor:pointer;font-weight:bold;touch-action:manipulation;padding:12px 16px}
+    .btn-up-down{font-size:28px;width:64px;height:64px;background:#0f3460;color:#e94560}
+    .btn-up-down:active{transform:scale(0.9);background:#1a5480}
+    button:disabled{cursor:not-allowed;opacity:0.5}
+    .display{font-size:32px;font-weight:bold;color:#e94560;text-align:center;min-width:100px;padding:12px}
+    .display-box{background:#0f0f1a;border-radius:8px;border:1px solid #333;padding:8px}
+    .btn-save{width:100%;background:#4a148c;color:#e1bee7;font-size:14px}
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{color:#888;font-weight:normal;padding:8px 4px;text-align:center;border-bottom:1px solid #333}
+    td{padding:8px 4px;text-align:center;color:#e94560;font-weight:bold}
+    td.idx{color:#555;font-size:10px}
+    .const-row{display:flex;justify-content:space-between;font-size:12px;color:#888;padding:6px 0}
+    .back{display:block;text-align:center;color:#888;text-decoration:none;padding:14px;border:1px solid #333;border-radius:10px;background:#1a1a2e;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;border:none}
+  </style>
+</head>
+<body>
+<h2>Motor Speed Setup</h2>
+
+<div class="card">
+  <div style="text-align:center;margin-bottom:12px">
+    <div style="font-size:12px;color:#888;margin-bottom:8px">SPIN MODE</div>
+    <button class="btn" id="spin-btn" style="background:#e94560;color:#0f0f1a;font-size:16px;font-weight:bold;padding:12px 24px;border-radius:10px;cursor:pointer" onclick="toggleSpin()">TOPSPIN</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row">
+    <div class="col">
+      <span class="col-title">MAIN</span>
+      <button class="btn btn-up-down" onclick="incMain()">▲</button>
+      <div class="display-box">
+        <div class="display" id="main-val">-</div>
+      </div>
+      <button class="btn btn-up-down" onclick="decMain()">▼</button>
+      <button class="btn btn-save" onclick="saveMain()">SAVE T1</button>
+    </div>
+    <div class="col">
+      <span class="col-title">SUPPORT</span>
+      <button class="btn btn-up-down" id="pup-btn" onclick="incSupp()">▲</button>
+      <div class="display-box">
+        <div class="display" id="supp-val">-</div>
+      </div>
+      <button class="btn btn-up-down" id="pdown-btn" onclick="decSupp()">▼</button>
+      <button class="btn btn-save" id="t2-btn" onclick="saveSupp()">SAVE T2</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="font-size:12px;color:#888;margin-bottom:12px;font-weight:bold">Viteze Salvate</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>MAIN (us)</th>
+          <th>SUPPORT (us)</th>
+        </tr>
+      </thead>
+      <tbody id="speeds-body">
+        <tr><td colspan="3" style="color:#555">Se incarca...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<button class="back" onclick="window.location='/'">◄ Inapoi</button>
+<div id="status" style="text-align:center;font-size:12px;color:#666;margin-top:16px">ready</div>
+
+<script>
+var mainIdx=0, suppIdx=0, currentSpin='TOPSPIN';
+
+function toggleSpin(){
+  fetch('/setspin')
+    .then(r=>r.text())
+    .then(t=>{
+      poll();
+    })
+    .catch(e=>console.log(e));
+}
+
+function poll(){
+  fetch('/mstatus')
+    .then(r=>r.json())
+    .then(d=>{
+      currentSpin=d.spin;
+      document.getElementById('spin-btn').textContent=currentSpin;
+      document.getElementById('main-val').textContent=d.main_speed||'-';
+      document.getElementById('supp-val').textContent=d.support_speed||'-';
+      var tbody=document.getElementById('speeds-body');
+      tbody.innerHTML='';
+      for(var i=1;i<=8;i++){
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td class="idx">'+i+'</td><td>'+d.up[i]+'</td><td>'+d.down[i]+'</td>';
+        tbody.appendChild(tr);
+      }
+      // Disable P buttons in NOSPIN mode
+      var isNospin = (d.spin === 'NOSPIN');
+      document.getElementById('pup-btn').disabled = isNospin;
+      document.getElementById('pdown-btn').disabled = isNospin;
+      document.getElementById('t2-btn').disabled = isNospin;
+      if(isNospin){
+        document.getElementById('pup-btn').style.opacity='0.5';
+        document.getElementById('pdown-btn').style.opacity='0.5';
+        document.getElementById('t2-btn').style.opacity='0.5';
+      }else{
+        document.getElementById('pup-btn').style.opacity='1';
+        document.getElementById('pdown-btn').style.opacity='1';
+        document.getElementById('t2-btn').style.opacity='1';
+      }
+    }).catch(e=>document.getElementById('status').textContent='error');
+}
+
+function incMain(){
+  fetch('/vup').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function decMain(){
+  fetch('/vdown').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function incSupp(){
+  fetch('/pup').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function decSupp(){
+  fetch('/pdown').then(()=>poll()).catch(e=>console.log(e));
+}
+
+function saveMain(){
+  fetch('/t1save').then(r=>r.text()).then(t=>document.getElementById('status').textContent=t).catch(e=>document.getElementById('status').textContent='error');
+  setTimeout(poll, 500);
+}
+
+function saveSupp(){
+  fetch('/t2save').then(r=>r.text()).then(t=>document.getElementById('status').textContent=t).catch(e=>document.getElementById('status').textContent='error');
+  setTimeout(poll, 500);
+}
+
+poll();
+</script>
+</body>
+</html>

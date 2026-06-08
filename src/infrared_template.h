@@ -490,7 +490,7 @@ public:
     return current_point_waiting;
   }
 
-  void virtual _TOK()
+  void virtual _TC()
   {
     if (feeder.index > 0)
       return;

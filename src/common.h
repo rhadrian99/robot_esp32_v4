@@ -2,6 +2,20 @@
 #define common_h
 #include <Arduino.h>
 
+// Global serial output switch:
+// 1 = enabled, 0 = disabled
+#ifndef SERIAL_OUTPUT_ENABLED
+#define SERIAL_OUTPUT_ENABLED 1
+#endif
+
+#if SERIAL_OUTPUT_ENABLED
+#define SERIAL_BEGIN(baud) Serial.begin(baud)
+#define SERIAL_FLUSH() Serial.flush()
+#else
+#define SERIAL_BEGIN(baud) do { } while (0)
+#define SERIAL_FLUSH() do { } while (0)
+#endif
+
 // #define HUAYU
 #define SAMSUNG
 
@@ -70,7 +84,7 @@
 #define hGuide 3760129799
 
 #define hB 3943958279
-#define hC 3927246599 // original 3927246599
+#define hC 3927246599 // original 3927246599 
 #define hD 3910534919
 #define pause 3041527559
 #define play 3091662599
@@ -108,7 +122,7 @@
 #define data_Pin 17 // 25  //esp32
 
 // Firmware version
-#define FW_VERSION "6.5" // 6.5 selectie programe, setare pozitii
+#define FW_VERSION "6.6" // 6.5 selectie programe, setare pozitii
 
 #endif
 

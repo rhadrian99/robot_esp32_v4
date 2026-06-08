@@ -171,16 +171,16 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 
   <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px">
     <div style="display:flex;gap:8px">
-      <button onclick="stopPolling();window.location='/settings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+      <button id="btn-servo-settings" onclick="stopPolling();window.location='/settings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
                        font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
         &#9881; Servo Settings
       </button>
-      <button onclick="stopPolling();window.location='/motorsettings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+      <button id="btn-motor-settings" onclick="stopPolling();window.location='/motorsettings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
                        font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
         &#9881; Motor Settings
       </button>
     </div>
-    <button onclick="stopPolling();window.location='/firmware'" style="width:100%;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;
+    <button id="btn-firmware-update" onclick="stopPolling();window.location='/firmware'" style="width:100%;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;
                      font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
       &#11014; Firmware Update
     </button>
@@ -416,6 +416,17 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .then(t=>document.getElementById('status').textContent=t)
         .catch(()=>document.getElementById('status').textContent='error');
     }
+    function setSettingsButtonsEnabled(enabled){
+      var ids=['btn-servo-settings','btn-motor-settings','btn-firmware-update'];
+      ids.forEach(function(id){
+        var btn=document.getElementById(id);
+        if(!btn) return;
+        btn.disabled=!enabled;
+        btn.style.opacity=enabled?'1':'0.45';
+        btn.style.cursor=enabled?'pointer':'not-allowed';
+        btn.title=enabled?'':'Disabled while at least one motor is active';
+      });
+    }
     function pollStatus(){
       fetch('/status')
         .then(r=>r.json())
@@ -429,6 +440,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           document.getElementById('m1val').textContent=(d.m1_vpos!==undefined?d.m1_vpos:d.m1);
           document.getElementById('m2val').textContent=nospin?(d.m1_vpos!==undefined?d.m1_vpos:d.m1):(d.m2_vpos!==undefined?d.m2_vpos:d.m2);
           var motorsOff=(d.m1===0 && d.m2===0);
+          setSettingsButtonsEnabled(motorsOff);
           var frow=document.getElementById('f-row');
           frow.style.opacity=motorsOff?'0.3':'1';
           frow.style.pointerEvents=motorsOff?'none':'auto';
