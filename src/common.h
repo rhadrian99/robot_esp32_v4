@@ -98,7 +98,7 @@
 
 ////////////////////// definitie pini
 // infrared
-#define RECV_PIN 23 // moved from GPIO12 (strap pin) to avoid boot mode conflicts
+#define RECV_PIN 12 // IR input on GPIO12 (strap pin): if boot issues appear, move back to GPIO23
 
 // versiunea 2025
 //  brushless
@@ -109,7 +109,6 @@
 // servo motors
 #define PAN 18      // servo 1 //26 esp32
 #define TILT 19     // servo 2 //12 esp32
-#define SCRAMBLE 13 // servo 3 // 13 esp2
 
 // stepper
 #define STEP_PIN 4  // 19 //esp32
