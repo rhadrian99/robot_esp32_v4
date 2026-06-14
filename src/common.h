@@ -98,7 +98,7 @@
 
 ////////////////////// definitie pini
 // infrared
-#define RECV_PIN 12 // 23 //esp32
+#define RECV_PIN 23 // moved from GPIO12 (strap pin) to avoid boot mode conflicts
 
 // versiunea 2025
 //  brushless

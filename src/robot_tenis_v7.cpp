@@ -87,7 +87,7 @@ void IRTask(void *parameter)
 void setup()
 {
 
-  SERIAL_BEGIN(115200);
+  SERIAL_BEGIN(9600);
   SERIAL_FLUSH();
 
   // Init ESC motors FIRST — motor.attach() starts the ESC boot sequence (~3-4s hardware beep).
