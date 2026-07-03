@@ -17,6 +17,7 @@ extern void DEBUG(String label, bool newline);
 // connect and configure the stepper motor to its IO pins
 
 static const uint8_t FEEDER_TABLE[9] = {0, 9, 8, 7, 6, 5, 4, 3, 2};
+static constexpr bool USE_FAS_AUTO_ENABLE_TEST = true;
 
 
 StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
@@ -26,8 +27,7 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
    _dirPin  = dirPin;
    _stopPin = stopPin;   
 
-   // Enable pin managed manually via start()/stop() — NOT via FAS setAutoEnable,
-   // because setAutoEnable + manual digitalWrite on the same pin causes conflicts.
+  // Default state for enable pin (active LOW driver): disabled.
    pinMode(_stopPin, OUTPUT);
    digitalWrite(_stopPin, HIGH); // start disabled (active LOW driver)
 
@@ -36,14 +36,20 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
   if (_stepper) {
     _stepper->setDirectionPin(_dirPin,true);
 
+    if (USE_FAS_AUTO_ENABLE_TEST) {
+      _stepper->setEnablePin(_stopPin, true);
+      _stepper->setAutoEnable(true);
+      _stepper->setDelayToDisable(3000);
+    }
+
     //_stepper->setAcceleration(10000);
     //_stepper->setSpeedInHz(1000);
     
-    _stepper->setAcceleration(10000);
-    _stepper->setSpeedInHz(800);
+    _stepper->setAcceleration(8000); 
+    _stepper->setSpeedInHz(600);
   }
    timeout_const=200;
-   directie=-1; // -1 = normal, 1 = reversed
+   directie=1; // -1 = normal, 1 = reversed
 
    index=0;
    memcpy(_FEEDER, FEEDER_TABLE, sizeof(FEEDER_TABLE));
@@ -69,19 +75,17 @@ void StepperX::init_pins()
 
 void StepperX::start(){
     //_stepper.deactivateBrake();
-    
-     
-    if (digitalRead(_stopPin)==HIGH)
+
+    if (!USE_FAS_AUTO_ENABLE_TEST && (digitalRead(_stopPin)==HIGH))
     {
       digitalWrite(_stopPin, LOW); // start the feeder
-      
     }
     this->enable=true;
 }
 
 void StepperX::stop(){
-  
-  if (digitalRead(_stopPin)==LOW)
+
+  if (!USE_FAS_AUTO_ENABLE_TEST && (digitalRead(_stopPin)==LOW))
   {
     digitalWrite(_stopPin, HIGH); // stop the feeder
       }
