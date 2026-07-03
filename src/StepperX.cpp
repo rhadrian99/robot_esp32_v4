@@ -222,7 +222,7 @@ void StepperX::save_direction()
 void StepperX::save_timeout_const()
   {
     // Validate timeout before saving
-    if (timeout_const < 160 || timeout_const > 280) {
+    if (timeout_const < 50 || timeout_const > 400) {
       Serial.printf("WARNING: Invalid timeout %u. Not saving.\n", timeout_const);
       timeout_const = 200;  // Safe default
       return;
@@ -256,12 +256,12 @@ void StepperX::save_timeout_const()
     stepper_mem.end();
 
     // Validate and correct if out of range
-    if (timeout_const > 280) {
+    if (timeout_const > 400) {
       Serial.printf("WARNING: Timeout %u too high. Setting to 200.\n", timeout_const);
       timeout_const = 200;
       save_timeout_const();
     }
-    if (timeout_const < 160) {
+    if (timeout_const < 50) {
       Serial.printf("WARNING: Timeout %u too low. Setting to 200.\n", timeout_const);
       timeout_const = 200;
       save_timeout_const();
@@ -269,11 +269,107 @@ void StepperX::save_timeout_const()
     
     Serial.printf("INFO: Stepper timeout loaded: %u\n", timeout_const);
 
-  }  
+  }
 
 
+uint32_t StepperX::getAcceleration()
+{
+  if (_stepper) return _stepper->getAcceleration();
+  return 0;
+}
 
+uint32_t StepperX::getSpeedInHz()
+{
+  if (_stepper) return _stepper->getSpeedInMilliHz() / 1000;
+  return 0;
+}
 
+void StepperX::setAcceleration(uint32_t accel)
+{
+  if (accel < 400) accel = 400;
+  if (accel > 12000) accel = 12000;
+  if (_stepper) _stepper->setAcceleration((int32_t)accel);
+}
 
+void StepperX::setSpeedInHz(uint32_t speed_hz)
+{
+  if (speed_hz < 400) speed_hz = 400;
+  if (speed_hz > 1600) speed_hz = 1600;
+  if (_stepper) _stepper->setSpeedInHz(speed_hz);
+}
 
-  
+void StepperX::save_accel_speed()
+{
+  if (!stepper_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open stepper NVS namespace for accel/speed save\n");
+    return;
+  }
+
+  uint32_t accel = getAcceleration();
+  uint32_t speed = getSpeedInHz();
+
+  if (!stepper_mem.putUInt("accel", accel) || !stepper_mem.putUInt("speed", speed)) {
+    Serial.printf("ERROR: Failed to save stepper accel/speed\n");
+  } else {
+    Serial.printf("INFO: Stepper accel/speed saved: accel=%u speed=%u\n", accel, speed);
+  }
+
+  stepper_mem.end();
+}
+
+void StepperX::load_accel_speed()
+{
+  if (!stepper_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open stepper NVS namespace for accel/speed load\n");
+    setAcceleration(8000);
+    setSpeedInHz(600);
+    return;
+  }
+
+  uint32_t accel = stepper_mem.getUInt("accel", 8000);
+  uint32_t speed = stepper_mem.getUInt("speed", 600);
+  stepper_mem.end();
+
+  setAcceleration(accel);
+  setSpeedInHz(speed);
+
+  Serial.printf("INFO: Stepper accel/speed loaded: accel=%u speed=%u\n", getAcceleration(), getSpeedInHz());
+}
+
+void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction)
+{
+  setAcceleration(accel);
+  setSpeedInHz(speed_hz);
+
+  if (timeout < 50 || timeout > 400) {
+    Serial.printf("WARNING: Invalid timeout %u. Using 200.\n", timeout);
+    timeout = 200;
+  }
+  timeout_const = timeout;
+
+  if (direction != 1 && direction != -1) {
+    Serial.printf("WARNING: Invalid direction %d. Using -1.\n", direction);
+    direction = -1;
+  }
+  directie = direction;
+
+  if (!stepper_mem.begin(name.c_str(), false)) {
+    Serial.printf("ERROR: Failed to open stepper NVS namespace for combined save\n");
+    return;
+  }
+
+  bool ok = stepper_mem.putUInt("accel", getAcceleration()) &&
+            stepper_mem.putUInt("speed", getSpeedInHz()) &&
+            stepper_mem.putInt("timeout", timeout_const) &&
+            stepper_mem.putInt("directie", directie);
+
+  stepper_mem.end();
+
+  if (ok) {
+    Serial.printf("INFO: Stepper settings saved: accel=%u speed=%u timeout=%u direction=%d\n",
+                  getAcceleration(), getSpeedInHz(), timeout_const, directie);
+  } else {
+    Serial.printf("ERROR: Failed to save one or more stepper settings\n");
+  }
+}
+

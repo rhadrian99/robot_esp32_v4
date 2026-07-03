@@ -75,6 +75,9 @@ private:
   void _handle_update_upload();
   void _handle_update_done();
   void _handle_captive_portal();
+  void _handle_steppersettings();
+  void _handle_stepperstatus();
+  void _handle_steppersave();
 
   // FreeRTOS task
   static void _task(void *param);
@@ -125,6 +128,9 @@ private:
   static void _s_update_upload() { _instance->_handle_update_upload(); }
   static void _s_update_done()   { _instance->_handle_update_done(); }
   static void _s_captive_portal() { _instance->_handle_captive_portal(); }
+  static void _s_steppersettings() { _instance->_handle_steppersettings(); }
+  static void _s_stepperstatus()   { _instance->_handle_stepperstatus(); }
+  static void _s_steppersave()     { _instance->_handle_steppersave(); }
 };
 
 #endif

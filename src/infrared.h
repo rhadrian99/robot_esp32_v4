@@ -95,8 +95,6 @@ target_point target_load_nvm(target_point P)
   
   point.end();
 
-  Serial.println(result.name);
-     
   return result;
    
 }

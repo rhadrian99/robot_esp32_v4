@@ -1,6 +1,7 @@
 ﻿#include "WebControl.h"
 #include <common.h>
 #include <esp_mac.h>
+#include <esp_wifi.h>
 #include "Brush.h"
 #include "StepperX.h"
 #include "ServoX.h"
@@ -21,6 +22,14 @@ extern StepperX feeder;
 extern ServoX pan;
 extern ServoX tilt;
 extern LEDdisplay display;
+
+// Guards the background tasks spawned by /runpoint, /savepoint and /steppersave
+// (see WebControl::_handle_runpoint etc.). These handlers offload blocking work
+// (servo/feeder actuation, NVS flash writes) to a task off Core 0 so the WiFi/HTTP
+// task never stalls. This flag prevents a second rapid button tap from spawning an
+// overlapping task that touches the same globals (pan/tilt/motor_up/motor_down/feeder)
+// concurrently, which previously caused crashes/AP lockups.
+static volatile bool _bgActionBusy = false;
 
 WebControl *WebControl::_instance = nullptr;
 
@@ -180,6 +189,10 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         &#9881; Motor Settings
       </button>
     </div>
+    <button id="btn-stepper-settings" onclick="stopPolling();window.location='/steppersettings'" style="width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+                     font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
+      &#9881; Stepper Settings
+    </button>
     <button id="btn-firmware-update" onclick="stopPolling();window.location='/firmware'" style="width:100%;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;
                      font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
       &#11014; Firmware Update
@@ -1065,6 +1078,118 @@ poll();
 </body>
 </html>
 )rawhtml";
+
+// -- Stepper (feeder) settings page --------------------------------------
+static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
+  <title>Stepper Settings</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;background:#1a1a2e;color:#eee;touch-action:manipulation;
+         display:flex;flex-direction:column;align-items:center;
+         padding:20px;gap:16px;min-height:100vh;overflow-y:auto}
+    h2{letter-spacing:2px;font-size:18px;margin-bottom:4px}
+    .card{background:#16213e;border-radius:14px;padding:16px 20px;
+          width:100%;max-width:340px}
+    .grid{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+    .row-lbl{font-size:13px;color:#e94560;font-weight:bold}
+    .row-hint{font-size:10px;color:#666;display:block;margin-top:2px}
+    .grid input{background:#0f3460;border:none;border-radius:8px;
+                color:#eee;font-size:20px;padding:10px 6px;
+                width:100%;text-align:center;font-weight:bold}
+    .btn{width:100%;border:none;border-radius:10px;cursor:pointer;
+         font-size:16px;color:#eee;padding:13px;font-weight:bold}
+    .btn-save{background:#e94560}
+    .btn-back{background:#0f3460;color:#aaa;margin-top:8px}
+    #status{font-size:12px;color:#555}
+    .switch{position:relative;display:inline-block;width:56px;height:30px}
+    .switch input{display:none}
+    .slider{position:absolute;cursor:pointer;inset:0;background:#0f3460;
+            border-radius:30px;transition:.2s}
+    .slider:before{position:absolute;content:"";height:22px;width:22px;left:4px;bottom:4px;
+                   background:#aaa;border-radius:50%;transition:.2s}
+    input:checked + .slider{background:#e94560}
+    input:checked + .slider:before{transform:translateX(26px);background:#fff}
+  </style>
+</head>
+<body>
+  <h2>&#9881; Stepper Settings</h2>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <div class="row-lbl">Acceleration</div>
+        <span class="row-hint">400 - 12000</span>
+      </div>
+      <input type="number" id="accel" min="400" max="12000" value="8000">
+
+      <div>
+        <div class="row-lbl">Speed</div>
+        <span class="row-hint">400 - 1600</span>
+      </div>
+      <input type="number" id="speed" min="400" max="1600" value="600">
+
+      <div>
+        <div class="row-lbl">Timeout_const</div>
+        <span class="row-hint">50 - 400 ms</span>
+      </div>
+      <input type="number" id="timeout" min="50" max="400" value="200">
+
+      <div class="row-lbl">Direction<span class="row-hint">reverse</span></div>
+      <label class="switch">
+        <input type="checkbox" id="direction">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div style="width:100%;max-width:340px">
+    <button class="btn btn-save" onclick="saveStepper()">&#128190; Save</button>
+    <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
+  </div>
+
+  <div id="status">Se incarca...</div>
+
+  <script>
+    function loadStatus(){
+      fetch('/stepperstatus')
+        .then(r=>r.json())
+        .then(d=>{
+          document.getElementById('accel').value=d.accel;
+          document.getElementById('speed').value=d.speed;
+          document.getElementById('timeout').value=d.timeout;
+          document.getElementById('direction').checked = (d.direction == -1);
+          document.getElementById('status').textContent='ready';
+        })
+        .catch(()=>document.getElementById('status').textContent='error incarcare');
+    }
+
+    var _savingStepper = false;
+    function saveStepper(){
+      if (_savingStepper) return; // ignore double taps / repeated calls while a save is in flight
+      _savingStepper = true;
+      var btn = document.querySelector('.btn-save');
+      if (btn) btn.disabled = true;
+      var accel=parseInt(document.getElementById('accel').value);
+      var speed=parseInt(document.getElementById('speed').value);
+      var timeout=parseInt(document.getElementById('timeout').value);
+      var direction=document.getElementById('direction').checked ? -1 : 1;
+      fetch('/steppersave?accel='+accel+'&speed='+speed+'&timeout='+timeout+'&direction='+direction)
+        .then(r=>r.text())
+        .then(t=>{document.getElementById('status').textContent=t; loadStatus();})
+        .catch(()=>document.getElementById('status').textContent='error salvare')
+        .finally(()=>{_savingStepper=false; if(btn) btn.disabled=false;});
+    }
+
+    loadStatus();
+  </script>
+</body>
+</html>
+)rawhtml";
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 WebControl::WebControl() : _server(80)
@@ -1088,12 +1213,18 @@ void WebControl::_connect_wifi()
   generateUniqueSSID();
   
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS);
+  // softAPConfig MUST be called before softAP for the IP to take effect
   IPAddress apIP(192, 168, 4, 1);
   IPAddress apSubnet(255, 255, 255, 0);
   WiFi.softAPConfig(apIP, apIP, apSubnet);
+  WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS);
   
-  // Start DNS server - redirects ALL DNS queries to AP IP
+  // Dezactiveaza power saving - previne deconectarile neasteptate ale clientilor
+  esp_wifi_set_ps(WIFI_PS_NONE);
+  // Clientii inactivi sunt deconectati dupa 3600 sec (default ~5 min) - marim la 1 ora
+  esp_wifi_set_inactive_time(WIFI_IF_AP, 3600);
+  // Putere maxima de emisie - imbunatateste stabilitatea semnalului fata de telefon
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
   _dnsServer.start(53, "*", apIP);
   
   Serial.printf("WiFi AP started â€” SSID: %s  http://%s\n",
@@ -1143,6 +1274,9 @@ void WebControl::_register_routes()
   _server.on("/panmax",  HTTP_GET, _s_panmin); // changed bedause servo moves in opposite direction of command, so panmin command moves to max position and vice versa 
   _server.on("/tiltmin", HTTP_GET, _s_tiltmin);
   _server.on("/tiltmax", HTTP_GET, _s_tiltmax);
+  _server.on("/steppersettings", HTTP_GET, _s_steppersettings);
+  _server.on("/stepperstatus",   HTTP_GET, _s_stepperstatus);
+  _server.on("/steppersave",     HTTP_GET, _s_steppersave);
   _server.on("/firmware", HTTP_GET, _s_firmware);
   _server.on("/update", HTTP_POST, _s_update_done, _s_update_upload);
   _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
@@ -1240,6 +1374,64 @@ void WebControl::_handle_tiltmax()
 {
   tilt.startMove(tilt.max_value);
   _server.send(200, "text/plain", "TILT -> max");
+}
+
+void WebControl::_handle_steppersettings()
+{
+  _server.send_P(200, "text/html", STEPPER_PAGE);
+}
+
+void WebControl::_handle_stepperstatus()
+{
+  char buffer[128] = {0};
+  sprintf(buffer, "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d}",
+          feeder.getAcceleration(), feeder.getSpeedInHz(), feeder.timeout_const, feeder.directie);
+  _server.send(200, "application/json", buffer);
+}
+
+void WebControl::_handle_steppersave()
+{
+  uint32_t accel   = _server.hasArg("accel")   ? _server.arg("accel").toInt()   : feeder.getAcceleration();
+  uint32_t speed   = _server.hasArg("speed")   ? _server.arg("speed").toInt()   : feeder.getSpeedInHz();
+  uint16_t timeout = _server.hasArg("timeout") ? _server.arg("timeout").toInt() : feeder.timeout_const;
+  int8_t direction = _server.hasArg("direction") ? (int8_t)_server.arg("direction").toInt() : feeder.directie;
+
+  if (direction != 1 && direction != -1) {
+    _server.send(400, "text/plain", "Invalid direction");
+    return;
+  }
+
+  if (_bgActionBusy)
+  {
+    _server.send(429, "text/plain", "Busy, try again");
+    return;
+  }
+
+  // Apply speed/accel immediately (cheap, non-blocking), but do the flash write
+  // on a separate task off Core 0 — NVS writes briefly stall the CPU and were
+  // contributing to AP disconnects when triggered directly from the HTTP handler.
+  feeder.setAcceleration(accel);
+  feeder.setSpeedInHz(speed);
+
+  _bgActionBusy = true;
+  struct SaveArgs { uint16_t timeout; int8_t direction; };
+  SaveArgs *args = new SaveArgs{timeout, direction};
+  BaseType_t ok = xTaskCreatePinnedToCore([](void *param) {
+    SaveArgs *a = (SaveArgs *)param;
+    feeder.save_all_settings(feeder.getAcceleration(), feeder.getSpeedInHz(), a->timeout, a->direction);
+    delete a;
+    _bgActionBusy = false;
+    vTaskDelete(nullptr);
+  }, "StepperSave", 4096, args, 1, nullptr, 1);
+  if (ok != pdPASS)
+  {
+    delete args;
+    _bgActionBusy = false;
+    _server.send(500, "text/plain", "Task creation failed");
+    return;
+  }
+
+  _server.send(200, "text/plain", "Stepper settings saved");
 }
 
 void WebControl::_handle_firmware()
@@ -1467,7 +1659,30 @@ void WebControl::_handle_savepoint()
     _server.send(400, "text/plain", "Invalid poz");
     return;
   }
-  infrared_web_save_point(poz);
+  if (_bgActionBusy)
+  {
+    _server.send(429, "text/plain", "Busy, try again");
+    return;
+  }
+  // Run off the WebControl task (Core 0, shares core with WiFi): the flash write
+  // inside target_save_nvm() briefly stalls the CPU and was causing AP hiccups
+  // when triggered directly from the HTTP handler.
+  _bgActionBusy = true;
+  int *pozArg = new int(poz);
+  BaseType_t ok = xTaskCreatePinnedToCore([](void *param) {
+    int p = *(int *)param;
+    delete (int *)param;
+    infrared_web_save_point(p);
+    _bgActionBusy = false;
+    vTaskDelete(nullptr);
+  }, "SavePoint", 4096, pozArg, 1, nullptr, 1);
+  if (ok != pdPASS)
+  {
+    delete pozArg;
+    _bgActionBusy = false;
+    _server.send(500, "text/plain", "Task creation failed");
+    return;
+  }
   _server.send(200, "text/plain", "Point" + String(poz) + " saved");
 }
 
@@ -1481,7 +1696,30 @@ void WebControl::_handle_runpoint()
     _server.send(400, "text/plain", "Invalid poz");
     return;
   }
-  infrared_web_run_point(poz);
+  if (_bgActionBusy)
+  {
+    _server.send(429, "text/plain", "Busy, try again");
+    return;
+  }
+  // Run off the WebControl task (Core 0, shares core with WiFi): load_target_point()
+  // contains a blocking tempo_empty(500) which was stalling handleClient()/DNS for
+  // 500ms on every "Run Point" tap, causing the AP to drop the phone's connection.
+  _bgActionBusy = true;
+  int *pozArg = new int(poz);
+  BaseType_t ok = xTaskCreatePinnedToCore([](void *param) {
+    int p = *(int *)param;
+    delete (int *)param;
+    infrared_web_run_point(p);
+    _bgActionBusy = false;
+    vTaskDelete(nullptr);
+  }, "RunPoint", 4096, pozArg, 1, nullptr, 1);
+  if (ok != pdPASS)
+  {
+    delete pozArg;
+    _bgActionBusy = false;
+    _server.send(500, "text/plain", "Task creation failed");
+    return;
+  }
   _server.send(200, "text/plain", "Point" + String(poz) + " running");
 }
 
@@ -1927,7 +2165,8 @@ void WebControl::_handle_status()
 
 void WebControl::_handle_captive_portal()
 {
-  // Redirect all captive portal probes to home page
+  // iOS/Android detecteaza captive portal daca primeste redirect (nu "Success").
+  // Returnand mereu 302, iOS deschide automat mini-browserul cu pagina noastra.
   _server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   _server.sendHeader("Location", "http://192.168.4.1/", true);
   _server.send(302, "text/plain", "Redirecting to Robot Control");

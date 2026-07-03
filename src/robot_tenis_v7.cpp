@@ -109,6 +109,8 @@ void setup()
 
   // feeder.init_pins(); // DO NOT CALL: pinMode() on step pin breaks FAS RMT/MCPWM GPIO routing
   feeder.load_timeout_const(); // NVS now initialized — safe to load
+  feeder.load_direction();
+  feeder.load_accel_speed();
 
   motor_up.check_data(false);   // ensure NVS defaults exist for next boot
   motor_down.check_data(false); // ensure NVS defaults exist for next boot
