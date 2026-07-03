@@ -11,7 +11,9 @@
 
 
 
-// Stepper gear reduction ratio (physical gearbox)
+// Stepper gear reduction ratio (physical gearbox) — DEFAULT value.
+// The active value is the runtime member `gear_ratio`, adjustable 1..5 and
+// persisted to NVS (see load_gear_ratio/save_gear_ratio).
 //static constexpr float STEPPER_GEAR_RATIO = 2; //21T vs 42T
 static constexpr float STEPPER_GEAR_RATIO = 4.36; //21T vs 42T
 // Steps per full revolution (1.8 deg/step motor)
@@ -33,6 +35,7 @@ uint8_t _stopPin;
 uint8_t _FEEDER[9];
 volatile bool enable;
 int8_t directie;   // -1 or 1
+float gear_ratio;  // physical gearbox ratio (1.0 - 5.0), persisted to NVS
 String name;
 
 volatile int8_t index; // accessed from IRTask (Core 0) and loop() (Core 1)
@@ -57,6 +60,8 @@ void load_direction();
 void save_direction();
 void save_timeout_const();
 void load_timeout_const();
+void save_gear_ratio();
+void load_gear_ratio();
 
 uint32_t getAcceleration();
 uint32_t getSpeedInHz();
@@ -67,7 +72,7 @@ void load_accel_speed();
 // Saves accel, speed, timeout and direction in a single NVS open/close cycle
 // (avoids 3-4 separate flash writes back-to-back, which briefly stalls the CPU
 // and can disrupt WiFi timing when triggered directly from an HTTP handler).
-void save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction);
+void save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction, float gear);
 
 private:
 

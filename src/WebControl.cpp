@@ -1139,6 +1139,12 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
       </div>
       <input type="number" id="timeout" min="50" max="400" value="200">
 
+      <div>
+        <div class="row-lbl">Gear ratio</div>
+        <span class="row-hint">1.0 - 5.0</span>
+      </div>
+      <input type="number" id="gear" min="1" max="5" step="0.01" value="4.36">
+
       <div class="row-lbl">Direction<span class="row-hint">reverse</span></div>
       <label class="switch">
         <input type="checkbox" id="direction">
@@ -1162,6 +1168,7 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
           document.getElementById('accel').value=d.accel;
           document.getElementById('speed').value=d.speed;
           document.getElementById('timeout').value=d.timeout;
+          document.getElementById('gear').value=d.gear;
           document.getElementById('direction').checked = (d.direction == -1);
           document.getElementById('status').textContent='ready';
         })
@@ -1177,8 +1184,9 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
       var accel=parseInt(document.getElementById('accel').value);
       var speed=parseInt(document.getElementById('speed').value);
       var timeout=parseInt(document.getElementById('timeout').value);
+      var gear=parseFloat(document.getElementById('gear').value);
       var direction=document.getElementById('direction').checked ? -1 : 1;
-      fetch('/steppersave?accel='+accel+'&speed='+speed+'&timeout='+timeout+'&direction='+direction)
+      fetch('/steppersave?accel='+accel+'&speed='+speed+'&timeout='+timeout+'&gear='+gear+'&direction='+direction)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t; loadStatus();})
         .catch(()=>document.getElementById('status').textContent='error salvare')
@@ -1419,9 +1427,9 @@ void WebControl::_handle_steppersettings()
 
 void WebControl::_handle_stepperstatus()
 {
-  char buffer[128] = {0};
-  sprintf(buffer, "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d}",
-          feeder.getAcceleration(), feeder.getSpeedInHz(), feeder.timeout_const, feeder.directie);
+  char buffer[160] = {0};
+  sprintf(buffer, "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d,\"gear\":%.2f}",
+          feeder.getAcceleration(), feeder.getSpeedInHz(), feeder.timeout_const, feeder.directie, feeder.gear_ratio);
   _server.send(200, "application/json", buffer);
 }
 
@@ -1431,9 +1439,15 @@ void WebControl::_handle_steppersave()
   uint32_t speed   = _server.hasArg("speed")   ? _server.arg("speed").toInt()   : feeder.getSpeedInHz();
   uint16_t timeout = _server.hasArg("timeout") ? _server.arg("timeout").toInt() : feeder.timeout_const;
   int8_t direction = _server.hasArg("direction") ? (int8_t)_server.arg("direction").toInt() : feeder.directie;
+  float gear       = _server.hasArg("gear")    ? _server.arg("gear").toFloat()  : feeder.gear_ratio;
 
   if (direction != 1 && direction != -1) {
     _server.send(400, "text/plain", "Invalid direction");
+    return;
+  }
+
+  if (gear < 1.0f || gear > 5.0f) {
+    _server.send(400, "text/plain", "Invalid gear ratio");
     return;
   }
 
@@ -1450,11 +1464,11 @@ void WebControl::_handle_steppersave()
   feeder.setSpeedInHz(speed);
 
   _bgActionBusy = true;
-  struct SaveArgs { uint16_t timeout; int8_t direction; };
-  SaveArgs *args = new SaveArgs{timeout, direction};
+  struct SaveArgs { uint16_t timeout; int8_t direction; float gear; };
+  SaveArgs *args = new SaveArgs{timeout, direction, gear};
   BaseType_t ok = xTaskCreatePinnedToCore([](void *param) {
     SaveArgs *a = (SaveArgs *)param;
-    feeder.save_all_settings(feeder.getAcceleration(), feeder.getSpeedInHz(), a->timeout, a->direction);
+    feeder.save_all_settings(feeder.getAcceleration(), feeder.getSpeedInHz(), a->timeout, a->direction, a->gear);
     delete a;
     _bgActionBusy = false;
     vTaskDelete(nullptr);

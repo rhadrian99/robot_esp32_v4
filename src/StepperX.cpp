@@ -50,6 +50,7 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
   }
    timeout_const=200;
    directie=1; // -1 = normal, 1 = reversed
+   gear_ratio=STEPPER_GEAR_RATIO; // default; overridden from NVS via load_gear_ratio() in setup()
 
    index=0;
    memcpy(_FEEDER, FEEDER_TABLE, sizeof(FEEDER_TABLE));
@@ -144,7 +145,7 @@ steps/sec
   // move one feeder step (STEPS_PER_REV * GEAR_RATIO * MICROSTEP steps)
   // then optionally wait timeout based on FEEDER index value
 
-    int16_t _speed = (int16_t)(STEPS_PER_REV * STEPPER_GEAR_RATIO * MICROSTEP);
+    int16_t _speed = (int16_t)(STEPS_PER_REV * gear_ratio * MICROSTEP);
 
   if (prog==true)
   { 
@@ -272,6 +273,52 @@ void StepperX::save_timeout_const()
   }
 
 
+void StepperX::save_gear_ratio()
+  {
+    // Validate before saving
+    if (gear_ratio < 1.0f || gear_ratio > 5.0f) {
+      Serial.printf("WARNING: Invalid gear ratio %.2f. Not saving.\n", gear_ratio);
+      gear_ratio = STEPPER_GEAR_RATIO;
+      return;
+    }
+
+    if (!stepper_mem.begin(name.c_str(), false)) {
+      Serial.printf("ERROR: Failed to open stepper NVS namespace for gear save\n");
+      return;
+    }
+
+    if (!stepper_mem.putFloat("gear", gear_ratio)) {
+      Serial.printf("ERROR: Failed to save stepper gear ratio\n");
+    } else {
+      Serial.printf("INFO: Stepper gear ratio saved: %.2f\n", gear_ratio);
+    }
+
+    stepper_mem.end();
+  }
+
+
+  void StepperX::load_gear_ratio()
+  {
+    if (!stepper_mem.begin(name.c_str(), false)) {
+      Serial.printf("ERROR: Failed to open stepper NVS namespace for gear load\n");
+      gear_ratio = STEPPER_GEAR_RATIO;
+      return;
+    }
+
+    gear_ratio = stepper_mem.getFloat("gear", STEPPER_GEAR_RATIO);
+    stepper_mem.end();
+
+    // Validate and correct if out of range
+    if (gear_ratio < 1.0f || gear_ratio > 5.0f) {
+      Serial.printf("WARNING: Gear ratio %.2f out of range. Setting to %.2f.\n", gear_ratio, (float)STEPPER_GEAR_RATIO);
+      gear_ratio = STEPPER_GEAR_RATIO;
+      save_gear_ratio();
+    }
+
+    Serial.printf("INFO: Stepper gear ratio loaded: %.2f\n", gear_ratio);
+  }
+
+
 uint32_t StepperX::getAcceleration()
 {
   if (_stepper) return _stepper->getAcceleration();
@@ -336,7 +383,7 @@ void StepperX::load_accel_speed()
   Serial.printf("INFO: Stepper accel/speed loaded: accel=%u speed=%u\n", getAcceleration(), getSpeedInHz());
 }
 
-void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction)
+void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction, float gear)
 {
   setAcceleration(accel);
   setSpeedInHz(speed_hz);
@@ -353,6 +400,12 @@ void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t tim
   }
   directie = direction;
 
+  if (gear < 1.0f || gear > 5.0f) {
+    Serial.printf("WARNING: Invalid gear ratio %.2f. Using %.2f.\n", gear, (float)STEPPER_GEAR_RATIO);
+    gear = STEPPER_GEAR_RATIO;
+  }
+  gear_ratio = gear;
+
   if (!stepper_mem.begin(name.c_str(), false)) {
     Serial.printf("ERROR: Failed to open stepper NVS namespace for combined save\n");
     return;
@@ -361,15 +414,16 @@ void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t tim
   bool ok = stepper_mem.putUInt("accel", getAcceleration()) &&
             stepper_mem.putUInt("speed", getSpeedInHz()) &&
             stepper_mem.putInt("timeout", timeout_const) &&
-            stepper_mem.putInt("directie", directie);
+            stepper_mem.putInt("directie", directie) &&
+            stepper_mem.putFloat("gear", gear_ratio);
 
   uint32_t t0 = micros();
   stepper_mem.end();
   uint32_t commit_us = micros() - t0;
 
   if (ok) {
-    Serial.printf("INFO: Stepper settings saved: accel=%u speed=%u timeout=%u direction=%d (NVS commit=%u us)\n",
-                  getAcceleration(), getSpeedInHz(), timeout_const, directie, commit_us);
+    Serial.printf("INFO: Stepper settings saved: accel=%u speed=%u timeout=%u direction=%d gear=%.2f (NVS commit=%u us)\n",
+                  getAcceleration(), getSpeedInHz(), timeout_const, directie, gear_ratio, commit_us);
   } else {
     Serial.printf("ERROR: Failed to save one or more stepper settings\n");
   }

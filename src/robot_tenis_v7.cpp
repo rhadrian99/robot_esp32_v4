@@ -116,6 +116,7 @@ void setup()
   feeder.load_timeout_const(); // NVS now initialized — safe to load
   feeder.load_direction();
   feeder.load_accel_speed();
+  feeder.load_gear_ratio();
 
   motor_up.check_data(false);   // ensure NVS defaults exist for next boot
   motor_down.check_data(false); // ensure NVS defaults exist for next boot
