@@ -87,7 +87,12 @@ void IRTask(void *parameter)
 void setup()
 {
 
-  SERIAL_BEGIN(9600);
+  // 115200 (was 9600): at 9600 baud the verbose Serial output (motor speed array
+  // dumps in spin/load handlers, program logs) blocks the calling task for ~266ms
+  // when the 256-byte TX buffer fills. Inside WebControl handlers (Core 0) that
+  // starves the HTTP server and contributes to phone disconnects. 115200 is ~12x
+  // faster (~22ms worst case). NOTE: set the serial monitor to 115200 to read logs.
+  SERIAL_BEGIN(115200);
   SERIAL_FLUSH();
 
   // Init ESC motors FIRST — motor.attach() starts the ESC boot sequence (~3-4s hardware beep).
@@ -174,6 +179,26 @@ void loop()
   {
 
     feeder.move_stepper(true); // true = delayed movement (timeout based on FEEDER index)
+  }
+
+  // CRITICAL: loop() previously never blocked/yielded when idle (index==0 makes
+  // move_stepper() return almost instantly). Since loop() runs at priority 1 on
+  // Core 1, a tight spin here starves the Core 1 IDLE task, which is what actually
+  // frees the memory of any FreeRTOS task after vTaskDelete() (e.g. the RunPoint/
+  // SavePoint/StepperSave one-shot tasks spawned by WebControl, pinned to Core 1).
+  // Without this yield, every web button press leaked ~4-5KB permanently, slowly
+  // exhausting heap until WiFi/lwIP could no longer allocate buffers — matching the
+  // "works for a while, then AP misbehaves/disconnects" symptom.
+  vTaskDelay(1);
+
+  // Lightweight heap diagnostics — prints free heap every 10s so a real leak
+  // (steadily decreasing value) can be told apart from normal fragmentation.
+  static unsigned long _lastHeapLog = 0;
+  unsigned long now = millis();
+  if (now - _lastHeapLog >= 10000) {
+    _lastHeapLog = now;
+    Serial.printf("INFO: Free heap = %u bytes (min ever = %u)\n",
+                  ESP.getFreeHeap(), ESP.getMinFreeHeap());
   }
 
 } //////////////////////////////////////////////////// end loop

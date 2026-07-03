@@ -1207,11 +1207,44 @@ void WebControl::generateUniqueSSID()
   uniqueSSID = String(buffer);
 }
 
+// Handler de evenimente WiFi — loghează conectările/deconectările clientilor cu
+// timestamp (millis), MAC si AID. Codul de "reason" nu este expus de acest core
+// (Arduino ESP32 2.0.x), asa ca ne bazam pe timing: corelam ora deconectarii cu
+// logul de heap (10s) si cu activitatea motoarelor pentru a distinge cauzele.
+// IMPORTANT: NU apela functii care interogheaza driverul WiFi (ex. softAPgetStationNum())
+// din acest callback — ruleaza in contextul task-ului de evenimente WiFi si poate
+// bloca stack-ul (AP ramane vizibil dar refuza conexiuni). Folosim doar date din 'info'.
+static void _wifiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info)
+{
+  switch (event) {
+    case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
+      const uint8_t *m = info.wifi_ap_staconnected.mac;
+      Serial.printf("[WiFi][%lu] Client CONECTAT   %02X:%02X:%02X:%02X:%02X:%02X  aid=%u\n",
+                    millis(), m[0], m[1], m[2], m[3], m[4], m[5],
+                    info.wifi_ap_staconnected.aid);
+      break;
+    }
+    case ARDUINO_EVENT_WIFI_AP_STADISCONNECTED: {
+      const uint8_t *m = info.wifi_ap_stadisconnected.mac;
+      Serial.printf("[WiFi][%lu] Client DECONECTAT %02X:%02X:%02X:%02X:%02X:%02X  aid=%u  heap=%u\n",
+                    millis(), m[0], m[1], m[2], m[3], m[4], m[5],
+                    info.wifi_ap_stadisconnected.aid, ESP.getFreeHeap());
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 void WebControl::_connect_wifi()
 {
   // Generate unique SSID from chip's MAC address (last 2 bytes)
   generateUniqueSSID();
-  
+
+  // Inregistreaza handler-ul de evenimente INAINTE de a porni AP-ul, ca sa prindem
+  // toate conectarile/deconectarile si sa vedem codul de motiv in Serial Monitor.
+  WiFi.onEvent(_wifiEventHandler);
+
   WiFi.mode(WIFI_AP);
   // softAPConfig MUST be called before softAP for the IP to take effect
   IPAddress apIP(192, 168, 4, 1);
@@ -1223,8 +1256,11 @@ void WebControl::_connect_wifi()
   esp_wifi_set_ps(WIFI_PS_NONE);
   // Clientii inactivi sunt deconectati dupa 3600 sec (default ~5 min) - marim la 1 ora
   esp_wifi_set_inactive_time(WIFI_IF_AP, 3600);
-  // Putere maxima de emisie - imbunatateste stabilitatea semnalului fata de telefon
-  WiFi.setTxPower(WIFI_POWER_19_5dBm);
+  // Putere TX moderata (15 dBm) in loc de maxima (19.5 dBm). Heap-ul e stabil, deci
+  // deconectarile ramase nu sunt din memorie ci din RF/alimentare: pe placi ieftine
+  // cu alimentare zgomotoasa (motoare/ESC/stepper pe aceeasi sursa) puterea TX maxima
+  // provoaca brownout pe PA-ul radio -> deconectari rare. 15 dBm e mai stabil.
+  WiFi.setTxPower(WIFI_POWER_15dBm);
   _dnsServer.start(53, "*", apIP);
   
   Serial.printf("WiFi AP started â€” SSID: %s  http://%s\n",
@@ -1776,8 +1812,38 @@ void WebControl::_handle_pozdata()
 
 void WebControl::_handle_runstop()
 {
-  // Toggle execute state (run/stop program) - calls _Tstar()
-  infrared_menu(TStar, 'P');  // Send TStar command to program mode
+  // Toggle execute state (run/stop program) - calls _Tstar().
+  // _Tstar() does initial_position() + tempo_empty(800) (start) / tempo_empty(500)
+  // + initial_position() (stop): ~500-800ms. Running it inline blocks the WebControl
+  // task (Core 0) for that whole time, so rapid Run/Stop taps caused the phone's
+  // /status & /seqinfo polls to time out -> "Connection reset by peer" -> eventual
+  // real WiFi disassociation.
+  //
+  // Fix: offload to a one-shot task pinned to CORE 0 (NOT Core 1). Core 0 is _Tstar()'s
+  // proven-safe context (same core as IRTask and the previous synchronous version),
+  // so the servo-queue (startMove/xQueueSend, drained by servo tasks on Core 1)
+  // interaction is unchanged from known-good. A previous attempt on Core 1 froze the
+  // whole system because _Tstar contended with loop()+servo tasks on Core 1.
+  // While this task busy-waits in tempo_empty() (which calls yield()), the WebControl
+  // task (same core, same priority) keeps serving handleClient() -> HTTP stays alive.
+  // _bgActionBusy guard prevents rapid taps from spawning overlapping _Tstar tasks.
+  if (_bgActionBusy)
+  {
+    _server.send(429, "text/plain", "Busy, try again");
+    return;
+  }
+  _bgActionBusy = true;
+  BaseType_t ok = xTaskCreatePinnedToCore([](void *param) {
+    infrared_menu(TStar, 'P');  // Send TStar command to program mode
+    _bgActionBusy = false;
+    vTaskDelete(nullptr);
+  }, "RunStop", 8192, nullptr, 1, nullptr, 0);
+  if (ok != pdPASS)
+  {
+    _bgActionBusy = false;
+    _server.send(500, "text/plain", "Task creation failed");
+    return;
+  }
   _server.send(200, "text/plain", "ok");
 }
 

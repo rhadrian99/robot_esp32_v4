@@ -363,11 +363,13 @@ void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t tim
             stepper_mem.putInt("timeout", timeout_const) &&
             stepper_mem.putInt("directie", directie);
 
+  uint32_t t0 = micros();
   stepper_mem.end();
+  uint32_t commit_us = micros() - t0;
 
   if (ok) {
-    Serial.printf("INFO: Stepper settings saved: accel=%u speed=%u timeout=%u direction=%d\n",
-                  getAcceleration(), getSpeedInHz(), timeout_const, directie);
+    Serial.printf("INFO: Stepper settings saved: accel=%u speed=%u timeout=%u direction=%d (NVS commit=%u us)\n",
+                  getAcceleration(), getSpeedInHz(), timeout_const, directie, commit_us);
   } else {
     Serial.printf("ERROR: Failed to save one or more stepper settings\n");
   }
