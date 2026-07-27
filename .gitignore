@@ -5,4 +5,5 @@
 .vscode/ipch
 bootloader_header.bin
 bootloader_header2.bin
+src/secrets.h
 -

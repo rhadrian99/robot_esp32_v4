@@ -599,6 +599,8 @@ progress{width:100%;height:8px;border-radius:4px;accent-color:#e94560;display:no
 <div class="card">
   <div class="lbl">Selecteaza fisier .bin</div>
   <input type="file" id="fwFile" accept=".bin" onchange="readFwFile()" style="color:#e0e0e0;margin-bottom:8px;width:100%">
+  <div class="lbl">PIN update</div>
+  <input type="password" id="fwPin" inputmode="numeric" autocomplete="off" placeholder="PIN" style="color:#e0e0e0;background:#222;border:1px solid #444;border-radius:6px;padding:8px;margin-bottom:8px;width:100%">
   <button onclick="uploadFw()" style="background:#4a148c;color:#e1bee7">Upload Firmware</button>
   <progress id="fwProg" value="0" max="100"></progress>
   <div id="otaStatus"></div>
@@ -637,11 +639,13 @@ function uploadFw(){
   if(!f){document.getElementById('otaStatus').textContent='Selecteaza un fisier .bin';return;}
   if(!f.name.toLowerCase().endsWith('.bin')){document.getElementById('otaStatus').textContent='Fisier invalid!';return;}
   if(f.size<100000){document.getElementById('otaStatus').textContent='Fisier prea mic ('+Math.round(f.size/1024)+'KB)';return;}
+  var pin=document.getElementById('fwPin').value.trim();
+  if(!pin){document.getElementById('otaStatus').className='error';document.getElementById('otaStatus').textContent='Introdu PIN-ul de update';return;}
   var prog=document.getElementById('fwProg');
   var st=document.getElementById('otaStatus');
   var fd=new FormData();fd.append('file',f,f.name);
   var xhr=new XMLHttpRequest();
-  xhr.open('POST','/update');
+  xhr.open('POST','/update?pin='+encodeURIComponent(pin));
   xhr.upload.onprogress=function(e){if(e.lengthComputable){var p=Math.round(e.loaded/e.total*100);prog.style.display='block';prog.value=p;st.className='info';st.textContent='Upload: '+p+'% ('+Math.round(f.size/1024)+'KB)';}};
   xhr.onload=function(){prog.style.display='none';if(xhr.status===200&&xhr.responseText==='OK'){st.className='success';st.textContent='Upload OK! Dispozitivul se restarteaza...';}else{st.className='error';st.textContent='Eroare: '+xhr.responseText;}};
   xhr.onerror=function(){st.className='error';st.textContent='Eroare conexiune';prog.style.display='none';};
@@ -1413,7 +1417,7 @@ void WebControl::_handle_step()
   else servo_step = 4;
   
   char buffer[64] = {0};
-  sprintf(buffer, "{\"step\":%d}", servo_step);
+  snprintf(buffer, sizeof(buffer), "{\"step\":%d}", servo_step);
   _server.send(200, "application/json", buffer);
 }
 
@@ -1454,7 +1458,7 @@ void WebControl::_handle_steppersettings()
 void WebControl::_handle_stepperstatus()
 {
   char buffer[160] = {0};
-  sprintf(buffer, "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d,\"gear\":%.2f}",
+  snprintf(buffer, sizeof(buffer), "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d,\"gear\":%.2f}",
           feeder.getAcceleration(), feeder.getSpeedInHz(), feeder.timeout_const, feeder.directie, feeder.gear_ratio);
   _server.send(200, "application/json", buffer);
 }
@@ -1520,7 +1524,15 @@ void WebControl::_handle_update_upload()
   HTTPUpload& upload = _server.upload();
   
   if (upload.status == UPLOAD_FILE_START) {
-    // Start of upload â€” validate header and begin update
+    // Authorize FIRST: reject the whole upload unless the OTA PIN (sent as the
+    // ?pin= query arg by the firmware page) matches. Without this, anyone on the
+    // AP could flash arbitrary firmware. The PIN is stored in src/secrets.h.
+    _otaAuthorized = (_server.arg("pin") == OTA_PIN);
+    if (!_otaAuthorized) {
+      Serial.println("[OTA] REJECTED: wrong or missing PIN");
+      return;
+    }
+    // Start of upload — validate header and begin update
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
       Update.printError(Serial);
       return;
@@ -1528,6 +1540,7 @@ void WebControl::_handle_update_upload()
     Serial.printf("[OTA] Upload start: %s\n", upload.filename.c_str());
   }
   else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (!_otaAuthorized) return;  // drop chunks from an unauthorized upload
     // Chunk received â€” validate magic byte and write
     if (upload.totalSize == 0 && upload.currentSize < 10) {
       // First chunk â€” validate ESP32 header (magic byte 0xE9)
@@ -1547,6 +1560,7 @@ void WebControl::_handle_update_upload()
                   upload.currentSize, upload.totalSize / 1024);
   }
   else if (upload.status == UPLOAD_FILE_END) {
+    if (!_otaAuthorized) return;  // final response handled in _handle_update_done
     // Upload complete â€” finalize and restart
     if (Update.end(true)) {
       Serial.printf("[OTA] SUCCESS: %u bytes uploaded. Restarting...\n", upload.totalSize);
@@ -1566,8 +1580,15 @@ void WebControl::_handle_update_upload()
 
 void WebControl::_handle_update_done()
 {
-  // Callback after POST - not used in this flow since restart happens in _handle_update_upload
-  // But required to be defined for HTTP_POST with two parameters
+  // Main POST handler — runs after all upload chunks. On an authorized+successful
+  // update the device already restarted inside _handle_update_upload (END), so we
+  // only reach here when authorization failed (or the update errored).
+  if (!_otaAuthorized) {
+    _server.send(401, "text/plain", "PIN gresit sau lipsa");
+    return;
+  }
+  // Reached only if the update did not complete successfully.
+  _server.send(400, "text/plain", "Update failed");
 }
 
 void WebControl::_handle_motorsettings()
@@ -1602,29 +1623,27 @@ void WebControl::_handle_mstatus()
   }
 
   char buffer[1024] = {0};
-  
+  int len = 0;
+
   // Build JSON with MAIN/SUPPORT speeds (not motor_up/motor_down fixed!)
-  sprintf(buffer, "{\"spin\":\"%s\",\"main_speed\":%d,\"support_speed\":%d,\"up\":[" , 
+  len += snprintf(buffer + len, sizeof(buffer) - len,
+          "{\"spin\":\"%s\",\"main_speed\":%d,\"support_speed\":%d,\"up\":[",
           spin.c_str(), mainMotor->speed, supportMotor->speed);
-  
+
   // Append MAIN motor speeds array
-  for (int i = 0; i < 9; i++) {
-    char num[10];
-    sprintf(num, "%d", mainMotor->_SPEEDS[i]);
-    strcat(buffer, num);
-    if (i < 8) strcat(buffer, ",");
+  for (int i = 0; i < 9 && len < (int)sizeof(buffer); i++) {
+    len += snprintf(buffer + len, sizeof(buffer) - len,
+                    "%d%s", mainMotor->_SPEEDS[i], (i < 8) ? "," : "");
   }
-  strcat(buffer, "],\"down\":[" );
-  
+  len += snprintf(buffer + len, sizeof(buffer) - len, "],\"down\":[");
+
   // Append SUPPORT motor speeds array
-  for (int i = 0; i < 9; i++) {
-    char num[10];
-    sprintf(num, "%d", supportMotor->_SPEEDS[i]);
-    strcat(buffer, num);
-    if (i < 8) strcat(buffer, ",");
+  for (int i = 0; i < 9 && len < (int)sizeof(buffer); i++) {
+    len += snprintf(buffer + len, sizeof(buffer) - len,
+                    "%d%s", supportMotor->_SPEEDS[i], (i < 8) ? "," : "");
   }
-  strcat(buffer, "]}");
-  
+  snprintf(buffer + len, sizeof(buffer) - len, "]}");
+
   _server.send(200, "application/json", buffer);
 }
 
@@ -1829,7 +1848,7 @@ void WebControl::_handle_pozinfo()
   }
   
   char buffer[512];
-  sprintf(buffer, 
+  snprintf(buffer, sizeof(buffer), 
     "{\"current_poz\":%d,\"m1_spin\":\"%s\",\"m1_index\":%d,\"m2_spin\":\"%s\",\"m2_index\":%d,\"feeder_index\":%d,\"feeder_speed\":%d}",
     current_poz,
     spin_up_str.c_str(), motor_up.index,
@@ -1894,7 +1913,7 @@ void WebControl::_handle_seqinfo()
   bool running = infrared_get_execute_state();
   
   char buf[64];
-  sprintf(buf, "{\"program\":%d,\"running\":%s}", prog, running ? "true" : "false");
+  snprintf(buf, sizeof(buf), "{\"program\":%d,\"running\":%s}", prog, running ? "true" : "false");
   _server.send(200, "application/json", buf);
 }
 

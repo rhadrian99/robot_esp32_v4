@@ -8,8 +8,21 @@
 #include <Update.h>
 
 // ── WiFi Access Point credentials ────────────────────────────
-#define WIFI_SSID "TTROBOT"
-#define WIFI_PASS "barcelona2935"
+// Valorile reale se tin in src/secrets.h (ignorat de git). Daca fisierul
+// lipseste, se folosesc valorile default de mai jos. Copiaza
+// secrets.h.example -> secrets.h si completeaza.
+#if __has_include("secrets.h")
+  #include "secrets.h"
+#endif
+#ifndef WIFI_SSID
+  #define WIFI_SSID "TTROBOT"
+#endif
+#ifndef WIFI_PASS
+  #define WIFI_PASS "changeme"
+#endif
+#ifndef OTA_PIN
+  #define OTA_PIN "0000"
+#endif
 // IP implicit AP: 192.168.4.1
 // ──────────────────────────────────────────────────────────────
 
@@ -25,6 +38,7 @@ private:
   WebServer _server;
   DNSServer _dnsServer;
   String uniqueSSID;  // Unique SSID generated from MAC address
+  bool _otaAuthorized = false;  // set true only when the OTA PIN matched at upload start
 
   void _connect_wifi();
   void _register_routes();

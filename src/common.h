@@ -123,7 +123,7 @@
 #define data_Pin 17 // 25  //esp32
 
 // Firmware version
-#define FW_VERSION "6.6" // 6.5 selectie programe, setare pozitii
+#define FW_VERSION "6.7" // 6.5 selectie programe, setare pozitii
 
 #endif
 
