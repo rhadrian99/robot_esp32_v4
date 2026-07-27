@@ -153,18 +153,29 @@ steps/sec
     if (index>0) {start();}
   }
   else {start();}
-        
-  _stepper->move(directie*_speed);
-  
+
+  // Wait on the TARGET POSITION, not on isRunning().
+  // Rationale: _stepper->move() is asynchronous and there is a brief window
+  // right after it returns where isRunning() is still false (the ramp/RMT
+  // command has not been picked up yet). A "while(isRunning())" loop can exit
+  // in that window, returning while the wheel is still turning. On the next
+  // position, move() is then called while the previous move is still active;
+  // FastAccelStepper ADDS the relative moves, so the wheel does ~180° at once
+  // → the previous position throws no ball and the next one throws two.
+  // Waiting until the current position reaches the computed target avoids this.
+  int32_t _target = _stepper->getCurrentPosition() + (int32_t)directie * (int32_t)_speed;
+  _stepper->moveTo(_target);
+
   // Safety timeout: 5s max — prevents infinite block if FAS gets stuck
   unsigned long _move_deadline = millis() + 5000UL;
-  while (_stepper->isRunning() && millis() < _move_deadline)
+  while (_stepper->getCurrentPosition() != _target && millis() < _move_deadline)
   {
     yield();
   }
-  if (_stepper->isRunning()) {
-    _stepper->stopMove();
-    Serial.printf("WARNING: move_stepper() timeout — stepper force-stopped\n");
+  if (_stepper->getCurrentPosition() != _target) {
+    _stepper->forceStop();
+    Serial.printf("WARNING: move_stepper() timeout — stepper force-stopped (pos=%ld target=%ld)\n",
+                  (long)_stepper->getCurrentPosition(), (long)_target);
   }
 
    if (prog==true)
