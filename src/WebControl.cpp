@@ -72,9 +72,19 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     .slider-item input[type=range]::-moz-range-track{height:12px;border-radius:6px;background:#0f3460}
     .slider-item input[type=range]::-webkit-slider-thumb{margin-top:-4px}
     #status{font-size:12px;color:#555}
+    #conn-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:1000;
+                 background:#7b1f1f;color:#fff;text-align:center;padding:8px;
+                 font-size:13px;font-weight:bold;box-shadow:0 2px 8px #0008}
+    #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+           background:#16213e;color:#eee;padding:12px 20px;border-radius:10px;
+           font-size:13px;z-index:1001;opacity:0;pointer-events:none;
+           transition:opacity .2s;box-shadow:0 4px 12px #0008;max-width:90%;text-align:center}
+    #toast.show{opacity:1}
+    #toast.err{background:#7b1f1f;color:#fff}
   </style>
 </head>
 <body>
+  <div id="conn-banner">&#9888; Conexiune pierduta - se reincearca...</div>
   <h2>&#127926; Robot Control <span style="font-size:14px;color:#888" id="title-version">v6.4</span></h2>
 
   <div class="card">
@@ -219,7 +229,24 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
+  <div id="toast"></div>
+
   <script>
+    // â”€â”€ UI feedback: transient toast + connection-lost banner â”€â”€
+    var _toastTimer;
+    function toast(msg, isErr){
+      var t=document.getElementById('toast');
+      if(!t) return;
+      t.textContent=msg;
+      t.className='show'+(isErr?' err':'');
+      clearTimeout(_toastTimer);
+      _toastTimer=setTimeout(function(){t.className='';},2500);
+    }
+    var _pollFails=0;
+    function setOffline(off){
+      var b=document.getElementById('conn-banner');
+      if(b) b.style.display=off?'block':'none';
+    }
     // â”€â”€ Audio feedback functions â”€â”€
     let audioContext = null;
     function initAudio(){
@@ -297,9 +324,10 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .then(r=>r.text())
         .then(t=>{
           document.getElementById('status').textContent=t;
+          toast('Poz ' + _currentPoz + ' salvata');
           displayPozData(_currentPoz);
         })
-        .catch(()=>document.getElementById('status').textContent='save error');
+        .catch(()=>{document.getElementById('status').textContent='save error';toast('Eroare salvare Poz', true);});
     }
     function pozModalCancel(){
       errorSound();
@@ -378,7 +406,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
             document.getElementById('seq-btn').textContent = _sequences[_seqIndex];
           }
         })
-        .catch(()=>{});
+        .catch(()=>toast('Eroare schimbare program', true));
     }
     var _runStopState = 'RUN';
     function setSectionsEnabled(enabled){
@@ -412,13 +440,13 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
           setSeqButtonEnabled(!d.running);
           setSectionsEnabled(!d.running);
         })
-        .catch(()=>{});
+        .catch(()=>toast('Eroare Run/Stop', true));
     }
     function toggleStep(){
       fetch('/step')
         .then(r=>r.json())
         .then(d=>document.getElementById('btn-step').textContent=d.step+'\u00b0')
-        .catch(()=>{});
+        .catch(()=>toast('Eroare pas servo', true));
     }
     function cmd(dir){
       clickSound();
@@ -426,7 +454,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       fetch('/'+dir)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
-        .catch(()=>document.getElementById('status').textContent='error');
+        .catch(()=>{document.getElementById('status').textContent='error';toast('Comanda a esuat: '+dir, true);});
     }
     function mMotor1(delta){
       clickSound();
@@ -434,7 +462,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       fetch(url)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
-        .catch(()=>document.getElementById('status').textContent='error');
+        .catch(()=>{document.getElementById('status').textContent='error';toast('Eroare motor MAIN', true);});
     }
     function mMotor2(delta){
       clickSound();
@@ -442,7 +470,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       fetch(url)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
-        .catch(()=>document.getElementById('status').textContent='error');
+        .catch(()=>{document.getElementById('status').textContent='error';toast('Eroare motor SUPPORT', true);});
     }
     function mFeeder(delta){
       var cur=parseInt(document.getElementById('fval').textContent)||0;
@@ -450,7 +478,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       fetch('/feeder?v='+nv)
         .then(r=>r.text())
         .then(t=>{document.getElementById('status').textContent=t;pollStatus();})
-        .catch(()=>document.getElementById('status').textContent='error');
+        .catch(()=>{document.getElementById('status').textContent='error';toast('Eroare feeder', true);});
     }
     function confirmSavePos(){
       var m=document.getElementById('confirm-modal');
@@ -466,8 +494,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     function savePos(){
       fetch('/savepos')
         .then(r=>r.text())
-        .then(t=>document.getElementById('status').textContent=t)
-        .catch(()=>document.getElementById('status').textContent='error');
+        .then(t=>{document.getElementById('status').textContent=t;toast('Pozitie HOME salvata');})
+        .catch(()=>{document.getElementById('status').textContent='error';toast('Eroare salvare HOME', true);});
     }
     function setSettingsButtonsEnabled(enabled){
       var ids=['btn-servo-settings','btn-motor-settings','btn-stepper-settings','btn-firmware-update'];
@@ -489,6 +517,8 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       fetch('/status')
         .then(r=>r.json())
         .then(d=>{
+          _pollFails=0;
+          setOffline(false);
           document.getElementById('btn-mute').textContent=d.spin;
           document.getElementById('m1label').textContent=d.spin;
           var nospin=(d.spin==='NOSPIN');
@@ -548,7 +578,9 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
             setSectionsEnabled(!d.running);
           }
         })
-        .catch(()=>{})
+        .catch(()=>{
+          if(++_pollFails>=3) setOffline(true);
+        })
         .finally(()=>{pollStatus._busy=false;});
     }
     function updateSeqInfo(){ /* merged into pollStatus() */ }
@@ -1371,6 +1403,7 @@ void WebControl::_register_routes()
 
 void WebControl::_handle_root()
 {
+  _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", HTML_PAGE);
 }
 
@@ -1423,6 +1456,7 @@ void WebControl::_handle_step()
 
 void WebControl::_handle_settings()
 {
+  _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", SETTINGS_PAGE);
 }
 
@@ -1452,6 +1486,7 @@ void WebControl::_handle_tiltmax()
 
 void WebControl::_handle_steppersettings()
 {
+  _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", STEPPER_PAGE);
 }
 
@@ -1516,6 +1551,7 @@ void WebControl::_handle_steppersave()
 
 void WebControl::_handle_firmware()
 {
+  _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", FIRMWARE_UPDATE_PAGE);
 }
 
@@ -1593,6 +1629,7 @@ void WebControl::_handle_update_done()
 
 void WebControl::_handle_motorsettings()
 {
+  _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", MOTOR_PAGE);
 }
 
