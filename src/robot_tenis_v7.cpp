@@ -125,32 +125,13 @@ void setup()
 #define ROBOT_ADRIAN 1
 #define ROBOT_NEW 0
 
-  if (ROBOT_IRINEL)
-  {
-    pan.init(PAN, F("PAN"), 5, 55);
-  }
-  if (ROBOT_ADRIAN)
-  {
-    pan.init(PAN, F("PAN"), 5, 50);
-  }
-  if (ROBOT_NEW)
-  {
-    pan.init(PAN, F("PAN"), 0, 40);
-  }
+  pan.init(PAN, F("PAN"), 5, 50);
+  
   pan.load_limits(); // override min/max from NVS (default 5, 50)
   pan.load_pos();
-  if (ROBOT_IRINEL)
-  {
-    tilt.init(TILT, F("TILT"), 15, 60);
-  } //
-  if (ROBOT_ADRIAN)
-  {
-    tilt.init(TILT, F("TILT"), 5, 50);
-  } //
-  if (ROBOT_NEW)
-  {
-    tilt.init(TILT, F("TILT"), 0, 40);
-  } // new join mechanism
+  
+  tilt.init(TILT, F("TILT"), 5, 50);
+ 
   tilt.load_limits(); // override min/max from NVS (default 5, 50)
   tilt.load_pos();
 

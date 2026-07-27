@@ -15,7 +15,7 @@
 // The active value is the runtime member `gear_ratio`, adjustable 1..5 and
 // persisted to NVS (see load_gear_ratio/save_gear_ratio).
 //static constexpr float STEPPER_GEAR_RATIO = 2; //21T vs 42T
-static constexpr float STEPPER_GEAR_RATIO = 4.36; //21T vs 42T
+static constexpr float STEPPER_GEAR_RATIO = 4.36;   
 // Steps per full revolution (1.8 deg/step motor)
 static constexpr uint8_t STEPS_PER_REV = 50;
 // Microstepping factor (TMC2208, MS1 jumper off = 1/8)
@@ -49,7 +49,6 @@ void init_pins();
 
 void start();
 void stop();
-
 
 void increase_speed();
 void decrease_speed();

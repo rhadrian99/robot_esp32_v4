@@ -102,7 +102,9 @@
 
 // versiunea 2025
 //  brushless
-#define MOT_UP 16 // motor 1   //27 old value
+#define MOT_UP 16 // motor 1   //27 old value 
+
+//#define MOT_UP 13 // motor 1   // test model vechi
 // #define MOT_UP2   // motor 1
 #define MOT_DOWN 27 // motor 2 //
 

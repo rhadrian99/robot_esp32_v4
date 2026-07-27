@@ -358,28 +358,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         runStopBtn.style.cursor = running ? 'not-allowed' : 'pointer';
       }
     }
-    function updatePozInfo(){
-      fetch('/pozinfo')
-        .then(r=>r.json())
-        .then(d=>{
-          // Update Poz button if changed on remote
-          if(d.current_poz > 0 && d.current_poz <= 6){
-            _currentPoz = d.current_poz;
-            document.getElementById('poz-btn').textContent = 'Poz ' + _currentPoz;
-            _viewingSavedPoz = false;  // Reset when position changes from remote
-          }
-          // Update motor and feeder info only if not viewing saved position
-          if(!_viewingSavedPoz){
-            document.getElementById('poz-m1-spin').textContent = d.m1_spin;
-            document.getElementById('poz-m1-idx').textContent = d.m1_index;
-            document.getElementById('poz-m2-spin').textContent = d.m2_spin;
-            document.getElementById('poz-m2-idx').textContent = d.m2_index;
-            document.getElementById('poz-feed-spd').textContent = d.feeder_speed;
-            document.getElementById('poz-feed-idx').textContent = d.feeder_index;
-          }
-        })
-        .catch(()=>{});
-    }
+    function updatePozInfo(){ /* merged into pollStatus() */ }
     var _seqIndex = 0;
     const _sequences = ['P1 - P3', 'P1 - P2 -P3', 'P1-P1-P3-P3', 'Random'];
     function toggleSequence(){
@@ -491,7 +470,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>document.getElementById('status').textContent='error');
     }
     function setSettingsButtonsEnabled(enabled){
-      var ids=['btn-servo-settings','btn-motor-settings','btn-firmware-update'];
+      var ids=['btn-servo-settings','btn-motor-settings','btn-stepper-settings','btn-firmware-update'];
       ids.forEach(function(id){
         var btn=document.getElementById(id);
         if(!btn) return;
@@ -502,6 +481,11 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
       });
     }
     function pollStatus(){
+      // In-flight guard: skip if a previous poll hasn't returned yet so rapid
+      // ticks (and post-action refreshes) never stack up on the single-threaded
+      // ESP32 WebServer.
+      if(pollStatus._busy) return;
+      pollStatus._busy=true;
       fetch('/status')
         .then(r=>r.json())
         .then(d=>{
@@ -535,33 +519,45 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
             document.getElementById('title-version').textContent='v'+d.version;
             document.title='Robot Control v'+d.version;
           }
-        }).catch(()=>{});
-    }
-    function updateSeqInfo(){
-      // Sync sequence/program from IR to UI
-      fetch('/seqinfo')
-        .then(r=>r.json())
-        .then(d=>{
-          // Map program number to sequence index: 2->0, 3->1, 4->2, 6->3
-          let progToIdx = {2:0, 3:1, 4:2, 6:3};
-          if(d.program in progToIdx){
-            _seqIndex = progToIdx[d.program];
-            document.getElementById('seq-btn').textContent = _sequences[_seqIndex];
+          // ── Poz info (formerly /pozinfo) ──
+          if(d.current_poz!==undefined){
+            if(d.current_poz > 0 && d.current_poz <= 6){
+              _currentPoz = d.current_poz;
+              document.getElementById('poz-btn').textContent = 'Poz ' + _currentPoz;
+              _viewingSavedPoz = false;
+            }
+            if(!_viewingSavedPoz){
+              document.getElementById('poz-m1-spin').textContent = d.m1_spin;
+              document.getElementById('poz-m1-idx').textContent = d.m1_index;
+              document.getElementById('poz-m2-spin').textContent = d.m2_spin;
+              document.getElementById('poz-m2-idx').textContent = d.m2_index;
+              document.getElementById('poz-feed-spd').textContent = d.feeder_speed;
+              document.getElementById('poz-feed-idx').textContent = d.feeder_index;
+            }
           }
-          // Update run/stop button
-          _runStopState = d.running ? 'STOP' : 'RUN';
-          document.getElementById('run-stop-btn').textContent = _runStopState;
-          setSeqButtonEnabled(!d.running);
-          setSectionsEnabled(!d.running);
+          // ── Sequence/program info (formerly /seqinfo) ──
+          if(d.program!==undefined){
+            let progToIdx = {2:0, 3:1, 4:2, 6:3};
+            if(d.program in progToIdx){
+              _seqIndex = progToIdx[d.program];
+              document.getElementById('seq-btn').textContent = _sequences[_seqIndex];
+            }
+            _runStopState = d.running ? 'STOP' : 'RUN';
+            document.getElementById('run-stop-btn').textContent = _runStopState;
+            setSeqButtonEnabled(!d.running);
+            setSectionsEnabled(!d.running);
+          }
         })
-        .catch(()=>{});
+        .catch(()=>{})
+        .finally(()=>{pollStatus._busy=false;});
     }
+    function updateSeqInfo(){ /* merged into pollStatus() */ }
     var pollInterval;
     function startPolling(){
-      pollInterval=setInterval(()=>{pollStatus();updatePozInfo();updateSeqInfo();},500);
+      // Single unified poll: /status now carries motor, poz and sequence state,
+      // so one request per tick replaces the previous three (/status+/pozinfo+/seqinfo).
+      pollInterval=setInterval(pollStatus,500);
       pollStatus();
-      updatePozInfo();
-      updateSeqInfo();
     }
     function stopPolling(){
       if(pollInterval) clearInterval(pollInterval);
@@ -1114,6 +1110,18 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
                    background:#aaa;border-radius:50%;transition:.2s}
     input:checked + .slider{background:#e94560}
     input:checked + .slider:before{transform:translateX(26px);background:#fff}
+    /* confirm modal */
+    #modal{display:none;position:fixed;inset:0;background:#0008;
+           z-index:999;align-items:center;justify-content:center}
+    #modal.show{display:flex}
+    .modal-box{background:#16213e;border-radius:14px;padding:24px 20px;
+               max-width:280px;width:90%;text-align:center}
+    .modal-box p{margin-bottom:20px;font-size:14px;line-height:1.5}
+    .modal-btns{display:flex;gap:10px}
+    .modal-btns button{flex:1;border:none;border-radius:10px;padding:12px;
+                       font-size:15px;font-weight:bold;cursor:pointer}
+    .btn-ok{background:#e94560;color:#eee}
+    .btn-cancel{background:#0f3460;color:#aaa}
   </style>
 </head>
 <body>
@@ -1160,6 +1168,17 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
 
   <div id="status">Se incarca...</div>
 
+  <!-- confirm modal save stepper -->
+  <div id="modal">
+    <div class="modal-box">
+      <p>Salvezi setarile stepper (feeder)?</p>
+      <div class="modal-btns">
+        <button class="btn-ok" onclick="doStepperSave()">OK</button>
+        <button class="btn-cancel" onclick="closeStepperModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function loadStatus(){
       fetch('/stepperstatus')
@@ -1175,8 +1194,15 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>document.getElementById('status').textContent='error incarcare');
     }
 
-    var _savingStepper = false;
     function saveStepper(){
+      // Show confirmation modal (mirrors servo settings save UX) instead of saving immediately.
+      document.getElementById('modal').classList.add('show');
+    }
+    function closeStepperModal(){ document.getElementById('modal').classList.remove('show'); }
+
+    var _savingStepper = false;
+    function doStepperSave(){
+      document.getElementById('modal').classList.remove('show');
       if (_savingStepper) return; // ignore double taps / repeated calls while a save is in flight
       _savingStepper = true;
       var btn = document.querySelector('.btn-save');
@@ -2231,14 +2257,33 @@ void WebControl::_handle_status()
     m2_vpos = motor_up.getVirtualPosition();
   }
 
-  char buffer[512] = {0};
-  // Build JSON with sprintf - includes firmware version for OTA detection
+  // Unified status: also embeds the fields previously served by /pozinfo and
+  // /seqinfo so the web client can poll a single endpoint (1 request/cycle
+  // instead of 3). Raw (non-swapped) motor_up/motor_down spin+index are exposed
+  // under the same names the JS already expects for the Poz card.
+  auto spinLabel = [](Brush &m) -> const char * {
+    if (m.spin == Brush::TOPSPIN) return "TOPSPIN";
+    if (m.spin == Brush::SUPPORT) return "SUPPORT";
+    if (m.spin == Brush::BACKSPIN) return "BACKSPIN";
+    return "NOSPIN";
+  };
+  int current_poz = infrared_get_current_point();
+  int program = infrared_get_selected_program();
+  bool running = infrared_get_execute_state();
+
+  char buffer[768] = {0};
+  // Build JSON with snprintf - includes firmware version for OTA detection
   // m1_vpos, m2_vpos: virtual positions 0-8 with decimal precision
-  sprintf(buffer, "{\"spin\":\"%s\",\"m1\":%d,\"m2\":%d,\"m1_vpos\":%.1f,\"m2_vpos\":%.1f,\"f\":%d,\"pan\":%d,\"pan_min\":%d,\"pan_max\":%d,\"tilt\":%d,\"tilt_min\":%d,\"tilt_max\":%d,\"step\":%d,\"version\":\"%s\"}",
+  snprintf(buffer, sizeof(buffer),
+          "{\"spin\":\"%s\",\"m1\":%d,\"m2\":%d,\"m1_vpos\":%.1f,\"m2_vpos\":%.1f,\"f\":%d,\"pan\":%d,\"pan_min\":%d,\"pan_max\":%d,\"tilt\":%d,\"tilt_min\":%d,\"tilt_max\":%d,\"step\":%d,\"version\":\"%s\","
+          "\"current_poz\":%d,\"m1_spin\":\"%s\",\"m1_index\":%d,\"m2_spin\":\"%s\",\"m2_index\":%d,\"feeder_index\":%d,\"feeder_speed\":%d,\"program\":%d,\"running\":%s}",
           spin.c_str(), m1idx, m2idx, m1_vpos, m2_vpos, feeder.index, 
           pan.read_pos(), pan.min_value, pan.max_value,
           tilt.read_pos(), tilt.min_value, tilt.max_value,
-          servo_step, FW_VERSION);
+          servo_step, FW_VERSION,
+          current_poz, spinLabel(motor_up), motor_up.index,
+          spinLabel(motor_down), motor_down.index,
+          feeder.index, feeder.speed, program, running ? "true" : "false");
   
   _server.send(200, "application/json", buffer);
 }
