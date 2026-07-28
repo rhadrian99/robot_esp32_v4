@@ -791,11 +791,11 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
       <div class="col-hdr">min</div>
       <div class="col-hdr">max</div>
       <div class="row-lbl">pan</div>
-      <input type="number" id="pan_min" min="0" max="90" value="5">
-      <input type="number" id="pan_max" min="0" max="90" value="50">
+      <input type="number" id="pan_min" min="0" max="110" value="5">
+      <input type="number" id="pan_max" min="0" max="110" value="50">
       <div class="row-lbl">tilt</div>
-      <input type="number" id="tilt_min" min="0" max="90" value="5">
-      <input type="number" id="tilt_max" min="0" max="90" value="50">
+      <input type="number" id="tilt_min" min="0" max="110" value="5">
+      <input type="number" id="tilt_max" min="0" max="110" value="50">
       <div></div>
       <div></div>
       <button class="btn btn-save" style="padding:10px" onclick="confirmSave()">&#128190; Save</button>
@@ -873,7 +873,7 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
       var tM=parseInt(document.getElementById('tilt_max').value);
       var err='';
       if(pm<=0||tm<=0)         err='min trebuie sa fie > 0';
-      else if(pM>=60||tM>=60)  err='max trebuie sa fie < 60';
+      else if(pM>110||tM>110)  err='max trebuie sa fie <= 110';
       else if(pm>=pM)          err='PAN: min trebuie sa fie < max';
       else if(tm>=tM)          err='TILT: min trebuie sa fie < max';
       if(err){
@@ -1173,9 +1173,9 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
 
       <div>
         <div class="row-lbl">Speed</div>
-        <span class="row-hint">400 - 1600</span>
+        <span class="row-hint">50 - 200</span>
       </div>
-      <input type="number" id="speed" min="400" max="1600" value="600">
+      <input type="number" id="speed" min="50" max="200" value="100">
 
       <div>
         <div class="row-lbl">Timeout_const</div>
@@ -1930,7 +1930,7 @@ void WebControl::_handle_runstop()
   }
   _bgActionBusy = true;
   BaseType_t ok = xTaskCreatePinnedToCore([](void *param) {
-    infrared_menu(TStar, 'P');  // Send TStar command to program mode
+    infrared_menu(hTStar, 'P');  // Send TStar command to program mode
     _bgActionBusy = false;
     vTaskDelete(nullptr);
   }, "RunStop", 8192, nullptr, 1, nullptr, 0);
@@ -2104,7 +2104,7 @@ void WebControl::_handle_setlimits()
   int tilt_max = _server.hasArg("tilt_max") ? _server.arg("tilt_max").toInt() : (int)tilt.max_value;
 
   if (pan_min <= 0 || tilt_min <= 0)        { _server.send(400, "text/plain", "min trebuie sa fie > 0"); return; }
-  if (pan_max >= 60 || tilt_max >= 60)      { _server.send(400, "text/plain", "max trebuie sa fie < 60"); return; }
+  if (pan_max > 110 || tilt_max > 110)      { _server.send(400, "text/plain", "max trebuie sa fie <= 110"); return; }
   if (pan_min >= pan_max)                   { _server.send(400, "text/plain", "PAN: min trebuie sa fie < max"); return; }
   if (tilt_min >= tilt_max)                 { _server.send(400, "text/plain", "TILT: min trebuie sa fie < max"); return; }
 

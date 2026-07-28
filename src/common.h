@@ -19,7 +19,7 @@
 // #define HUAYU
 #define SAMSUNG
 
-#define MINIREMOTE
+#define MINIREMOTE3
 
 // mini remote
 #ifdef MINIREMOTE
@@ -100,12 +100,24 @@
 // infrared
 #define RECV_PIN 12 // IR input on GPIO12 (strap pin): if boot issues appear, move back to GPIO23
 
+// ─── Selectie model robot ─────────────────────────────────────────────
+// Lasa definit ROBOT_MODEL_OLD pentru robotul VECHI (MOT_UP=13, servo 10..110)
+// Comenteaza linia pentru robotul NOU              (MOT_UP=16, servo 5..50)
+//#define ROBOT_MODEL_OLD
+
+#ifdef ROBOT_MODEL_OLD
+  #define MOT_UP 13     // model VECHI: motor 1 pe GPIO13
+  #define SERVO_MIN 10  // limite servo model VECHI
+  #define SERVO_MAX 110
+#else
+  #define MOT_UP 16     // model NOU: motor 1 pe GPIO16
+  #define SERVO_MIN 5   // limite servo model NOU
+  #define SERVO_MAX 50
+#endif
+// ──────────────────────────────────────────────────────────────────────
+
 // versiunea 2025
 //  brushless
-#define MOT_UP 16 // motor 1   //27 old value 
-
-//#define MOT_UP 13 // motor 1   // test model vechi
-// #define MOT_UP2   // motor 1
 #define MOT_DOWN 27 // motor 2 //
 
 // servo motors

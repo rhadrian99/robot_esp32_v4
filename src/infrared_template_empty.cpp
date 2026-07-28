@@ -112,13 +112,13 @@ static const char* ir_code_name(uint32_t v)
     case T7:      return "T7";
     case T8:      return "T8";
     case T9:      return "T9";
-    case Tdiez:   return "Tdiez";
-    case TStar:   return "TStar";
-    case TOK:     return "TOK";
-    case TLEFT:   return "TLEFT";
-    case TRIGHT:  return "TRIGHT";
-    case TUP:     return "TUP";
-    case TDOWN:   return "TDOWN";
+    //case Tdiez:   return "Tdiez";
+    //case TStar:   return "TStar";
+    //case TOK:     return "TOK";
+    //case TLEFT:   return "TLEFT";
+    //case TRIGHT:  return "TRIGHT";
+    //case TUP:     return "TUP";
+    //case TDOWN:   return "TDOWN";
     case hT0:     return "hT0";
     case hT1:     return "hT1";
     case hT2:     return "hT2";
@@ -162,23 +162,23 @@ void infrared_template_empty::menu(uint32_t _var)
     switch (_var)
     {
 
-    case T1:        _T1();      break;
-    case T2:        _T2();      break;
-    case T3:        _T3();      break;
-    case TOK:       _TOK();     break;
-    case T4:        _T4();      break;
-    case T7:        _T7();      break;    
-    case T5:        _T5();      break;
-    case T8:        _T8();      break;
-    case T6:        _T6();      break;
-    case T9:        _T9();      break;
-    case T0:        _T0();      break;
-    case TStar:     _Tstar();   break;
-    case Tdiez:     _Tdiez();   break;
-    case TUP:       _TUP();     break;
-    case TDOWN:     _TDOWN();   break;
-    case TRIGHT:    _TRIGHT();   break;
-    case TLEFT:     _TLEFT();   break;
+    //case T1:        _T1();      break;
+    //case T2:        _T2();      break;
+    //case T3:        _T3();      break;
+    //case TOK:       _TOK();     break;
+    //case T4:        _T4();      break;
+    //case T7:        _T7();      break;    
+    //case T5:        _T5();      break;
+    //case T8:        _T8();      break;
+    //case T6:        _T6();      break;
+    //case T9:        _T9();      break;
+    //case T0:        _T0();      break;
+    //case TStar:     _Tstar();   break;
+    //case Tdiez:     _Tdiez();   break;
+    //case TUP:       _TUP();     break;
+    //case TDOWN:     _TDOWN();   break;
+    //case TRIGHT:    _TRIGHT();   break;
+    //case TLEFT:     _TLEFT();   break;
 
     case hT1:        _T1();      break;
     case hT2:        _T2();      break;

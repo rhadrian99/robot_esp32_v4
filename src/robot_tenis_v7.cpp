@@ -57,7 +57,7 @@ void receive_ir()
       bool same_code = (receive_value == last_ir_value);
       // When program is running, use longer debounce for start/stop codes to prevent
       // Samsung retransmit (every ~100ms) from accidentally stopping execution mid-cycle
-      bool is_start_stop = (receive_value == TStar || receive_value == hTStar || receive_value == hPower);
+      bool is_start_stop = (receive_value == hTStar || receive_value == hPower);
       // Always use long debounce for TStar — Samsung retransmits every ~100ms.
       // Without this, after execute=false the debounce drops to 800ms and the
       // next Samsung retransmit (~100-800ms later) toggles execute back to true.
@@ -121,18 +121,15 @@ void setup()
   motor_up.check_data(false);   // ensure NVS defaults exist for next boot
   motor_down.check_data(false); // ensure NVS defaults exist for next boot
 
-#define ROBOT_IRINEL 0
-#define ROBOT_ADRIAN 1
-#define ROBOT_NEW 0
-
-  pan.init(PAN, F("PAN"), 5, 50);
-  
-  pan.load_limits(); // override min/max from NVS (default 5, 50)
+  // Limitele servo depind de modelul robotului (vezi ROBOT_MODEL_OLD in common.h):
+  //   model VECHI -> SERVO_MIN=10, SERVO_MAX=110
+  //   model NOU   -> SERVO_MIN=5,  SERVO_MAX=50
+  pan.init(PAN, F("PAN"), SERVO_MIN, SERVO_MAX);
+  pan.load_limits(SERVO_MIN, SERVO_MAX); // default min/max daca nu exista in NVS
   pan.load_pos();
-  
-  tilt.init(TILT, F("TILT"), 5, 50);
- 
-  tilt.load_limits(); // override min/max from NVS (default 5, 50)
+
+  tilt.init(TILT, F("TILT"), SERVO_MIN, SERVO_MAX);
+  tilt.load_limits(SERVO_MIN, SERVO_MAX); // default min/max daca nu exista in NVS
   tilt.load_pos();
 
   BrushTimer.attach_ms(50, update_motors);

@@ -46,7 +46,7 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
     //_stepper->setSpeedInHz(1000);
     
     _stepper->setAcceleration(8000); 
-    _stepper->setSpeedInHz(600);
+    _stepper->setSpeedInHz(100);
   }
    timeout_const=200;
    directie=1; // -1 = normal, 1 = reversed
@@ -351,8 +351,8 @@ void StepperX::setAcceleration(uint32_t accel)
 
 void StepperX::setSpeedInHz(uint32_t speed_hz)
 {
-  if (speed_hz < 400) speed_hz = 400;
-  if (speed_hz > 1600) speed_hz = 1600;
+  if (speed_hz < 50) speed_hz = 50;
+  if (speed_hz > 200) speed_hz = 200;
   if (_stepper) _stepper->setSpeedInHz(speed_hz);
 }
 
@@ -380,12 +380,12 @@ void StepperX::load_accel_speed()
   if (!stepper_mem.begin(name.c_str(), false)) {
     Serial.printf("ERROR: Failed to open stepper NVS namespace for accel/speed load\n");
     setAcceleration(8000);
-    setSpeedInHz(600);
+    setSpeedInHz(100);
     return;
   }
 
   uint32_t accel = stepper_mem.getUInt("accel", 8000);
-  uint32_t speed = stepper_mem.getUInt("speed", 600);
+  uint32_t speed = stepper_mem.getUInt("speed", 100);
   stepper_mem.end();
 
   setAcceleration(accel);
