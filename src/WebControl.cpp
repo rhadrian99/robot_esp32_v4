@@ -14,6 +14,7 @@ extern int infrared_get_current_point();
 extern String infrared_get_pozdata_json(int poz);
 extern int infrared_get_selected_program();
 extern bool infrared_get_execute_state();
+extern void infrared_web_stop_all();
 extern char mode;
 extern uint8_t servo_step;
 extern Brush motor_up;
@@ -1173,9 +1174,9 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
 
       <div>
         <div class="row-lbl">Speed</div>
-        <span class="row-hint">50 - 200</span>
+        <span class="row-hint">200 - 1600</span>
       </div>
-      <input type="number" id="speed" min="50" max="200" value="100">
+      <input type="number" id="speed" min="200" max="1600" value="800">
 
       <div>
         <div class="row-lbl">Timeout_const</div>
@@ -1284,11 +1285,29 @@ void WebControl::generateUniqueSSID()
 // IMPORTANT: NU apela functii care interogheaza driverul WiFi (ex. softAPgetStationNum())
 // din acest callback — ruleaza in contextul task-ului de evenimente WiFi si poate
 // bloca stack-ul (AP ramane vizibil dar refuza conexiuni). Folosim doar date din 'info'.
+
+// Setat de handler cand driverul WiFi opreste AP-ul (ex. dupa un glitch de radio/
+// brownout). Health-check-ul din _task il verifica si reporneste AP-ul imediat,
+// chiar daca softAPIP() a ramas valid (cazul in care beacon-ul e oprit dar IP-ul nu).
+static volatile bool s_apRestartNeeded = false;
+
+// Timestamp (millis) al ultimei activitati WiFi reale: client conectat/deconectat
+// sau request HTTP servit. Watchdog-ul din _task il foloseste pentru a detecta
+// starea "AP surd" — driverul zice mode=AP, IP valid, clients>=1, dar RX-ul e mort
+// dupa un glitch EMI/brownout si nu mai vine niciun request. Vezi WIFI_STUCK_TIMEOUT_MS.
+static volatile uint32_t s_lastWifiActivityMs = 0;
+
+// True cat timp health-check-ul face un restart/power-cycle intentionat al AP-ului.
+// Evita bucla de restart: WiFi.mode(WIFI_OFF)/softAPdisconnect din secventa noastra
+// declanseaza evenimentul AP_STOP, care altfel ar re-seta s_apRestartNeeded=true.
+static volatile bool s_selfRestart = false;
+
 static void _wifiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info)
 {
   switch (event) {
     case ARDUINO_EVENT_WIFI_AP_STACONNECTED: {
       const uint8_t *m = info.wifi_ap_staconnected.mac;
+      s_lastWifiActivityMs = millis();
       Serial.printf("[WiFi][%lu] Client CONECTAT   %02X:%02X:%02X:%02X:%02X:%02X  aid=%u\n",
                     millis(), m[0], m[1], m[2], m[3], m[4], m[5],
                     info.wifi_ap_staconnected.aid);
@@ -1296,9 +1315,23 @@ static void _wifiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info)
     }
     case ARDUINO_EVENT_WIFI_AP_STADISCONNECTED: {
       const uint8_t *m = info.wifi_ap_stadisconnected.mac;
+      s_lastWifiActivityMs = millis();
       Serial.printf("[WiFi][%lu] Client DECONECTAT %02X:%02X:%02X:%02X:%02X:%02X  aid=%u  heap=%u\n",
                     millis(), m[0], m[1], m[2], m[3], m[4], m[5],
                     info.wifi_ap_stadisconnected.aid, ESP.getFreeHeap());
+      break;
+    }
+    case ARDUINO_EVENT_WIFI_AP_STOP: {
+      if (s_selfRestart) {
+        Serial.printf("[WiFi][%lu] AP STOP (restart intern, ignor)\n", millis());
+      } else {
+        Serial.printf("[WiFi][%lu] AP STOP (radio oprit) — marchez repornire\n", millis());
+        s_apRestartNeeded = true;
+      }
+      break;
+    }
+    case ARDUINO_EVENT_WIFI_AP_START: {
+      Serial.printf("[WiFi][%lu] AP START\n", millis());
       break;
     }
     default:
@@ -1315,27 +1348,44 @@ void WebControl::_connect_wifi()
   // toate conectarile/deconectarile si sa vedem codul de motiv in Serial Monitor.
   WiFi.onEvent(_wifiEventHandler);
 
+  // Nu salva starea WiFi in NVS: dupa multe reflash-uri/soft-reset o stare veche
+  // poate face ca softAP() sa raporteze succes dar radioul sa nu mai emita beacon.
+  WiFi.persistent(false);
+  // Curata orice stare AP anterioara inainte de pornire (ca in proiectul feeder stabil).
+  WiFi.softAPdisconnect(true);
+  delay(250);
   WiFi.mode(WIFI_AP);
+  WiFi.setSleep(false);  // dezactiveaza power saving (echivalent cu WIFI_PS_NONE)
   // softAPConfig MUST be called before softAP for the IP to take effect
   IPAddress apIP(192, 168, 4, 1);
   IPAddress apSubnet(255, 255, 255, 0);
   WiFi.softAPConfig(apIP, apIP, apSubnet);
-  WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS);
-  
-  // Dezactiveaza power saving - previne deconectarile neasteptate ale clientilor
-  esp_wifi_set_ps(WIFI_PS_NONE);
-  // Clientii inactivi sunt deconectati dupa 3600 sec (default ~5 min) - marim la 1 ora
-  esp_wifi_set_inactive_time(WIFI_IF_AP, 3600);
-  // Putere TX moderata (15 dBm) in loc de maxima (19.5 dBm). Heap-ul e stabil, deci
-  // deconectarile ramase nu sunt din memorie ci din RF/alimentare: pe placi ieftine
-  // cu alimentare zgomotoasa (motoare/ESC/stepper pe aceeasi sursa) puterea TX maxima
-  // provoaca brownout pe PA-ul radio -> deconectari rare. 15 dBm e mai stabil.
-  WiFi.setTxPower(WIFI_POWER_15dBm);
+  delay(100);
+  // Retry de 3 ori, verificand ca IP-ul e valid (secventa dovedita din proiectul feeder).
+  for (int attempt = 1; attempt <= 3; attempt++) {
+    if (WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS, 1, 0, 4)) {
+      delay(250);
+      if (WiFi.softAPIP()[0] != 0) break;
+    }
+    Serial.printf("[WIFI] Reincercare AP %d/3\n", attempt);
+    WiFi.softAPdisconnect(true);
+    delay(250);
+  }
+  // Putere TX maxima. ESP-ul are DC-DC step-down separat (izolat de servo/brushless),
+  // deci brownout-ul nu e problema; picarile vin din EMI radiat de la brushless/ESC.
+  // La putere maxima beacon-ul are SNR mai bun la receptor si razbate mai bine prin EMI.
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
+#if USE_CAPTIVE_PORTAL
   _dnsServer.start(53, "*", apIP);
+#endif
   
   Serial.printf("WiFi AP started â€” SSID: %s  http://%s\n",
                 uniqueSSID.c_str(), WiFi.softAPIP().toString().c_str());
+#if USE_CAPTIVE_PORTAL
   Serial.println("DNS server started on port 53 (captive portal mode)");
+#else
+  Serial.println("Captive portal disabled; open http://192.168.4.1 directly");
+#endif
 }
 
 void WebControl::_register_routes()
@@ -1387,6 +1437,11 @@ void WebControl::_register_routes()
   _server.on("/update", HTTP_POST, _s_update_done, _s_update_upload);
   _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
   
+  // Necesare pentru a putea citi User-Agent in _handle_root (detectie CNA iOS).
+  static const char *collect_headers[] = { "User-Agent" };
+  _server.collectHeaders(collect_headers, 1);
+
+#if USE_CAPTIVE_PORTAL
   // Captive portal routes - iOS/Android/Windows probes
   _server.on("/hotspot-detect.html", HTTP_GET, _s_captive_portal);
   _server.on("/generate_204", HTTP_GET, _s_captive_portal);
@@ -1397,14 +1452,43 @@ void WebControl::_register_routes()
   
   // Catch-all: redirect any unknown request to home page
   _server.onNotFound(_s_captive_portal);
+#endif
 }
 
 // â”€â”€ HTTP handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 void WebControl::_handle_root()
 {
+  s_lastWifiActivityMs = millis();  // marcheaza activitate reala pt. watchdog-ul "AP surd"
+  Serial.printf("[HTTP] GET / begin, page=%u bytes, heap=%u\n",
+                (unsigned)(sizeof(HTML_PAGE) - 1), ESP.getFreeHeap());
+
+  // iOS deschide pagina intr-un mini-browser captive (CNA) care e un sandbox
+  // limitat: aplicatia completa se inchide instant cand apesi un buton. Detectam
+  // CNA dupa User-Agent si ii servim doar o pagina mica ce indruma spre Safari,
+  // unde aplicatia ruleaza stabil. Safari (UA normal) primeste aplicatia completa.
+  String ua = _server.header("User-Agent");
+  if (ua.indexOf("CaptiveNetworkSupport") >= 0) {
+    _server.sendHeader("Cache-Control", "no-store");
+    _server.send(200, "text/html",
+      "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
+      "<title>Robot Control</title><style>body{font-family:-apple-system,sans-serif;text-align:center;"
+      "padding:40px 20px;background:#111;color:#eee}h2{color:#4caf50}a{display:inline-block;margin-top:24px;"
+      "padding:14px 28px;background:#4caf50;color:#fff;border-radius:8px;text-decoration:none;font-size:18px}"
+      "p{font-size:16px;line-height:1.5}</style></head><body>"
+      "<h2>Robot conectat!</h2>"
+      "<p>Pentru panoul de control complet, deschide <b>Safari</b> si intra pe:</p>"
+      "<p style='font-size:22px;font-weight:bold'>192.168.4.1</p>"
+      "<a href='http://192.168.4.1/'>Deschide panoul</a>"
+      "<p style='margin-top:30px;font-size:14px;opacity:.7'>(Apasa Cancel sus, apoi deschide Safari)</p>"
+      "</body></html>");
+    Serial.println("[HTTP] GET / served captive splash (CNA)");
+    return;
+  }
+
   _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", HTML_PAGE);
+  Serial.printf("[HTTP] GET / complete, heap=%u\n", ESP.getFreeHeap());
 }
 
 void WebControl::_handle_up()
@@ -1433,7 +1517,7 @@ void WebControl::_handle_right()
 
 void WebControl::_handle_power()
 {
-  infrared_menu(hPower, mode);
+  infrared_web_stop_all();
   _server.send(200, "text/plain", "POWER OK");
 }
 
@@ -1492,6 +1576,7 @@ void WebControl::_handle_steppersettings()
 
 void WebControl::_handle_stepperstatus()
 {
+  s_lastWifiActivityMs = millis();  // poll pagina stepper -> feed watchdog "AP surd"
   char buffer[160] = {0};
   snprintf(buffer, sizeof(buffer), "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d,\"gear\":%.2f}",
           feeder.getAcceleration(), feeder.getSpeedInHz(), feeder.timeout_const, feeder.directie, feeder.gear_ratio);
@@ -1908,6 +1993,15 @@ void WebControl::_handle_pozdata()
 
 void WebControl::_handle_runstop()
 {
+  // STOP is an emergency path: execute it directly and return immediately.
+  // Do not queue the IR routine, which also waits and reloads servo positions.
+  if (infrared_get_execute_state())
+  {
+    infrared_web_stop_all();
+    _server.send(200, "text/plain", "stopped");
+    return;
+  }
+
   // Toggle execute state (run/stop program) - calls _Tstar().
   // _Tstar() does initial_position() + tempo_empty(800) (start) / tempo_empty(500)
   // + initial_position() (stop): ~500-800ms. Running it inline blocks the WebControl
@@ -1957,7 +2051,7 @@ void WebControl::_handle_seqinfo()
 void WebControl::_handle_cycleprogram()
 {
   // Cycle to next program (simulates T9 button press)
-  infrared_menu(T9, 'P');  // Send T9 command to program mode
+  infrared_menu(hT9, 'P');  // Send the active remote code recognized by menu()
   _server.send(200, "text/plain", "ok");
 }
 
@@ -2293,6 +2387,7 @@ void WebControl::_handle_home()
 
 void WebControl::_handle_status()
 {
+  s_lastWifiActivityMs = millis();  // poll la 500ms cat timp aplicatia e deschisa -> feed watchdog
   String spin = motor_up.spintype;
   // translate internal spintype to user-friendly label
   if (motor_up.spin == Brush::TOPSPIN)     spin = "TOPSPIN";
@@ -2346,8 +2441,9 @@ void WebControl::_handle_status()
 
 void WebControl::_handle_captive_portal()
 {
-  // iOS/Android detecteaza captive portal daca primeste redirect (nu "Success").
-  // Returnand mereu 302, iOS deschide automat mini-browserul cu pagina noastra.
+  // Pentru ca iOS/Android sa deschida AUTOMAT pagina de control la conectare,
+  // sonda captive trebuie sa primeasca un redirect (nu "Success"). Raspunsul
+  // "Success" ar face iOS sa creada ca are internet si NU ar mai deschide popup-ul.
   _server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   _server.sendHeader("Location", "http://192.168.4.1/", true);
   _server.send(302, "text/plain", "Redirecting to Robot Control");
@@ -2365,8 +2461,55 @@ void WebControl::_task(void *param)
     Serial.println("WebServer started on port 80");
     while (true)
     {
+#if USE_CAPTIVE_PORTAL
       self->_dnsServer.processNextRequest();  // Process DNS queries for captive portal
+#endif
       self->_server.handleClient();
+
+      // Health-check AP la fiecare 5s (ca in proiectul feeder stabil): daca AP-ul
+      // a picat (IP invalid), il repornim automat.
+      static uint32_t last_wifi_check = 0;
+      uint32_t now = millis();
+      if (now - last_wifi_check >= 5000) {
+        last_wifi_check = now;
+        bool ip_invalid   = (WiFi.softAPIP()[0] == 0);
+        bool mode_invalid = (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA);
+        uint32_t clients  = WiFi.softAPgetStationNum();
+        // "AP surd": driverul pare OK (IP+mode valide, clients>=1) dar nu mai vine
+        // nicio activitate de mult -> radioul RX e mort dupa glitch EMI/brownout.
+        bool ap_deaf = (clients >= 1) && (now - s_lastWifiActivityMs > WIFI_STUCK_TIMEOUT_MS);
+        Serial.printf("[WIFI] health: mode=%d ip=%s clients=%u restartFlag=%d idle=%lums heap=%u\n",
+                      (int)WiFi.getMode(), WiFi.softAPIP().toString().c_str(),
+                      clients, (int)s_apRestartNeeded,
+                      (unsigned long)(now - s_lastWifiActivityMs), ESP.getFreeHeap());
+        if (ip_invalid || mode_invalid || s_apRestartNeeded || ap_deaf) {
+          if (ap_deaf)
+            Serial.println("[WIFI] AP surd (radio RX mort), power-cycle complet radio");
+          else
+            Serial.println("[WIFI] AP indisponibil, repornesc reteaua");
+          s_selfRestart = true;  // suprima flag-ul AP_STOP declansat de propria secventa
+          IPAddress apIP(192, 168, 4, 1);
+          IPAddress apSubnet(255, 255, 255, 0);
+          // Reset radio la nivel de MAC/PHY (recalibrare RF, recupera RX-ul "surd")
+          // FARA teardown de netif: esp_wifi_stop/start nu re-initializeaza netstack-ul,
+          // deci evita eroarea "wifi_init_default: netstack cb reg failed" data de WIFI_OFF
+          // (care s-ar acumula la ciclurile repetate cand motoarele radiaza EMI continuu).
+          esp_wifi_stop();
+          delay(200);
+          esp_wifi_start();
+          delay(200);
+          WiFi.softAPConfig(apIP, apIP, apSubnet);
+          WiFi.softAP(self->uniqueSSID.c_str(), WIFI_PASS, 1, 0, 4);
+          WiFi.setSleep(false);
+          WiFi.setTxPower(WIFI_POWER_19_5dBm);
+          s_lastWifiActivityMs = millis();  // reseteaza watchdog-ul dupa repornire
+#if USE_CAPTIVE_PORTAL
+          self->_dnsServer.start(53, "*", apIP);
+#endif
+          s_apRestartNeeded = false;  // curata orice flag pus de AP_STOP intern
+          s_selfRestart = false;
+        }
+      }
       vTaskDelay(10 / portTICK_PERIOD_MS);
     }
   }

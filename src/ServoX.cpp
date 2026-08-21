@@ -41,6 +41,8 @@ void ServoX::save_pos(uint8_t val)
     Serial.printf("ERROR: Failed to save servo position for '%s'\n", name.c_str());
   } else {
     Serial.printf("INFO: Servo '%s' position saved: %u\n", name.c_str(), _input);
+    init_value = _input;   // tine cache-ul RAM sincronizat cu NVS
+    _pos_cached = true;
   }
   
   servo_mem.end();
@@ -88,6 +90,15 @@ void ServoX::load_limits(uint8_t default_min, uint8_t default_max)
 
 void ServoX::load_pos()
 {
+  // Cache in RAM: citeste NVS o singura data. Citirile din flash dezactiveaza
+  // temporar cache-ul CPU si pot lasa goluri in beacon-ul AP -> homing repetat
+  // in program (initial_position la fiecare punct/TStar) nu mai atinge flash-ul.
+  if (_pos_cached)
+  {
+    startMove(init_value);
+    return;
+  }
+
   if (!servo_mem.begin(name.c_str(), false)) {
     Serial.printf("ERROR: Failed to open servo NVS namespace '%s' for position read\n", name.c_str());
     init_value = 30;  // Use safe default
@@ -123,6 +134,7 @@ void ServoX::load_pos()
   Serial.printf("INFO: Servo '%s' loaded position: %u (min=%u, max=%u)\n", 
                 name.c_str(), init_value, min_value, max_value);
   
+  _pos_cached = true;
   startMove(init_value);
 }
 

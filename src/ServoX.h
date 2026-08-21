@@ -43,6 +43,7 @@ uint8_t EEPROM_address_max; // default 3
 uint8_t init_value;
 uint8_t min_value;
 uint8_t max_value;
+bool _pos_cached = false;  // true dupa prima citire NVS; evita citiri flash repetate (goluri beacon WiFi)
 String name;
 int moving;
 int _targetAngle;

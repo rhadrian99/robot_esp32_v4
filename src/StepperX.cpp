@@ -16,7 +16,7 @@ extern void DEBUG(String label, bool newline);
 
 // connect and configure the stepper motor to its IO pins
 
-static const uint8_t FEEDER_TABLE[9] = {0, 9, 8, 7, 6, 5, 4, 3, 2};
+static const uint8_t FEEDER_TABLE[9] = {0, 8, 7, 6, 5, 4, 3, 2, 1};
 static constexpr bool USE_FAS_AUTO_ENABLE_TEST = true;
 
 
@@ -46,7 +46,7 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
     //_stepper->setSpeedInHz(1000);
     
     _stepper->setAcceleration(8000); 
-    _stepper->setSpeedInHz(100);
+    _stepper->setSpeedInHz(800);
   }
    timeout_const=200;
    directie=1; // -1 = normal, 1 = reversed
@@ -58,7 +58,7 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
    // load_timeout_const() intentionally NOT called here — NVS is not initialized yet
    // (global constructor runs before setup()). Call feeder.load_timeout_const() in setup().
 
-  stop();
+  speed=0;
   this->enable=true;
 }
 
@@ -85,6 +85,11 @@ void StepperX::start(){
 }
 
 void StepperX::stop(){
+
+  if (_stepper && _stepper->isRunning())
+  {
+    _stepper->forceStop(); // cancel immediately any move already queued in FastAccelStepper
+  }
 
   if (!USE_FAS_AUTO_ENABLE_TEST && (digitalRead(_stopPin)==LOW))
   {
@@ -149,7 +154,10 @@ steps/sec
 
   if (prog==true)
   { 
-    if (index==0) {stop(); return;}
+    if (index==0) {
+      if (enable) stop();
+      return;
+    }
     if (index>0) {start();}
   }
   else {start();}
@@ -168,11 +176,11 @@ steps/sec
 
   // Safety timeout: 5s max — prevents infinite block if FAS gets stuck
   unsigned long _move_deadline = millis() + 5000UL;
-  while (_stepper->getCurrentPosition() != _target && millis() < _move_deadline)
+  while (enable && _stepper->getCurrentPosition() != _target && millis() < _move_deadline)
   {
     yield();
   }
-  if (_stepper->getCurrentPosition() != _target) {
+  if (enable && _stepper->getCurrentPosition() != _target) {
     _stepper->forceStop();
     Serial.printf("WARNING: move_stepper() timeout — stepper force-stopped (pos=%ld target=%ld)\n",
                   (long)_stepper->getCurrentPosition(), (long)_target);
@@ -351,8 +359,8 @@ void StepperX::setAcceleration(uint32_t accel)
 
 void StepperX::setSpeedInHz(uint32_t speed_hz)
 {
-  if (speed_hz < 50) speed_hz = 50;
-  if (speed_hz > 200) speed_hz = 200;
+  if (speed_hz < 200) speed_hz = 200;
+  if (speed_hz > 1600) speed_hz = 1600;
   if (_stepper) _stepper->setSpeedInHz(speed_hz);
 }
 
@@ -380,12 +388,12 @@ void StepperX::load_accel_speed()
   if (!stepper_mem.begin(name.c_str(), false)) {
     Serial.printf("ERROR: Failed to open stepper NVS namespace for accel/speed load\n");
     setAcceleration(8000);
-    setSpeedInHz(100);
+    setSpeedInHz(800);
     return;
   }
 
   uint32_t accel = stepper_mem.getUInt("accel", 8000);
-  uint32_t speed = stepper_mem.getUInt("speed", 100);
+  uint32_t speed = stepper_mem.getUInt("speed", 800);
   stepper_mem.end();
 
   setAcceleration(accel);

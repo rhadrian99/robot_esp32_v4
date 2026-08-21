@@ -175,6 +175,29 @@ bool infrared_get_execute_state()
   return execute;
 }
 
+void infrared_web_stop_all()
+{
+  execute = false;
+  mode = 'N';
+
+  // Stop the feeder first so no ball is pushed after the launch motors stop.
+  feeder.index = 0;
+  feeder.stop();
+
+  motor_up.index = 0;
+  motor_down.index = 0;
+  motor_up.stop();
+  motor_down.stop();
+  motor_up.set_speed(0);
+  motor_down.set_speed(0);
+
+  // Readu servourile in home (pozitia salvata in NVS). Calea rapida de STOP din
+  // web ocoleste _Tstar, deci homing-ul trebuie facut explicit aici. load_pos()
+  // e neblocant: citeste NVS si trimite tinta in coada servo (Core 1).
+  pan.load_pos();
+  tilt.load_pos();
+}
+
 String infrared_get_pozdata_json(int poz)
 {
   if (poz < 1 || poz > 6) return "{\"error\":\"Invalid poz\"}";

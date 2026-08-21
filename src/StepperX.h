@@ -19,7 +19,7 @@ static constexpr float STEPPER_GEAR_RATIO = 4.36;
 // Steps per full revolution (1.8 deg/step motor)
 static constexpr uint8_t STEPS_PER_REV = 50;
 // Microstepping factor (TMC2208, MS1 jumper off = 1/8)
-static constexpr uint8_t MICROSTEP = 1;
+static constexpr uint8_t MICROSTEP = 8;
 
 class StepperX
 {

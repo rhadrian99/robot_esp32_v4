@@ -124,6 +124,14 @@ public:
         feeder.index=0;
         feeder.stop();
 
+        // forceStop() can need up to ~20 ms to drain the FastAccelStepper queue.
+        // Wait for the feeder to stop physically before stopping the launch motors.
+        unsigned long feeder_stop_deadline = millis() + 50UL;
+        while (feeder._stepper && feeder._stepper->isRunning() && millis() < feeder_stop_deadline)
+        {
+          yield();
+        }
+
         motor_up.index=0;
         motor_down.index=0;
         motor_down.stop();

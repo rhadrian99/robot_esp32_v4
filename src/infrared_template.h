@@ -805,7 +805,7 @@ public:
       program_preloaded = true;
     }
     
-    int time = 700;
+    int time = 150;
 
     if (mode == 'N')
     {
@@ -816,22 +816,29 @@ public:
       switch (points)
       {
       case 2:
-        pos(*get_point_by_number(1), time);
+        pos(*get_point_by_number(1), time/2);
+        if (!execute) break;
         pos(*get_point_by_number(3), time);
         break;
 
       case 3:
-        pos(*get_point_by_number(1), time);
-        pos(*get_point_by_number(2), time);
-        pos(*get_point_by_number(3), time);
+        pos(*get_point_by_number(1), time/2);
+        if (!execute) break;
+        pos(*get_point_by_number(2), time/2);
+        if (!execute) break;
+        pos(*get_point_by_number(3), time/2);
+        if (!execute) break;
         pos(*get_point_by_number(2), time);
         break;
 
       case 4:
-        pos(*get_point_by_number(1), 600);
-        pos(*get_point_by_number(1), time);
-        pos(*get_point_by_number(3), 400);
-        pos(*get_point_by_number(3), time);
+        pos(*get_point_by_number(1), 100);
+        if (!execute) break;
+        pos(*get_point_by_number(1), 200);
+        if (!execute) break;
+        pos(*get_point_by_number(3), 100);
+        if (!execute) break;
+        pos(*get_point_by_number(3), 200);
         break;
 
       case 6:
@@ -850,6 +857,8 @@ public:
             target_point *p = get_point_by_number(randPoint);
             if (p)
               pos(*p, time);
+            if (!execute)
+              break;
             lastPoint = randPoint;
           }
         }
@@ -884,8 +893,14 @@ public:
       return;
     }
 
-    tempo_empty(timeout_throw);
+    //tempo_empty(timeout_throw); //temporizare
+
+    if (execute == false)
+    {
+      return;
+    }
     feeder.move_stepper(false);
+    tempo_empty(timeout_throw); //temporizare
   }
 
 private:

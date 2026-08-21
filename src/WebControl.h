@@ -23,6 +23,18 @@
 #ifndef OTA_PIN
   #define OTA_PIN "0000"
 #endif
+
+// 1 = captive portal cu redirect automat, 0 = acces direct la http://192.168.4.1
+#ifndef USE_CAPTIVE_PORTAL
+  #define USE_CAPTIVE_PORTAL 1
+#endif
+// Watchdog "AP surd": daca driverul raporteaza clients>=1 dar nu mai vine nicio
+// activitate (radio RX mort dupa glitch EMI/brownout) atatea ms, fortam un
+// power-cycle complet al radioului (WIFI_OFF -> WIFI_AP, reruleaza calibrarea PHY).
+// Mareste-l daca reseteaza prea des un telefon conectat dar inactiv.
+#ifndef WIFI_STUCK_TIMEOUT_MS
+  #define WIFI_STUCK_TIMEOUT_MS 30000
+#endif
 // IP implicit AP: 192.168.4.1
 // ──────────────────────────────────────────────────────────────
 
