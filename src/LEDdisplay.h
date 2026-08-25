@@ -62,6 +62,7 @@ LEDdisplay(int dPin, int clPin, int csPin, int devices);
 
 void timer(unsigned long reftime);
 void clear();
+void shutdown();  // Turn off the LED display completely
 void displayImage(uint64_t image,float seconds);
 void displayImage_async(uint64_t image, float seconds);
 void display_now(uint64_t image);

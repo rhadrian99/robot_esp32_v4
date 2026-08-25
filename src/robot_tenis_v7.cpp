@@ -97,8 +97,8 @@ void setup()
 
   // Init ESC motors FIRST — motor.attach() starts the ESC boot sequence (~3-4s hardware beep).
   // By calling init() before NVS ops, ESC boot runs in parallel with the rest of setup().
-  motor_up.init(MOT_UP, Brush::TOPSPIN, "MOTOR UP");
-  motor_down.init(MOT_DOWN, Brush::SUPPORT, "MOTOR DOWN");
+  motor_up.init(MOT_UP, Brush::TOPSPIN, "MOTOR UP");//M3 pe placa
+  motor_down.init(MOT_DOWN, Brush::SUPPORT, "MOTOR DOWN"); //M1 pe placa
 
   irrecv.enableIRIn();
 

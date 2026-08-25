@@ -45,10 +45,10 @@ StepperX::StepperX(uint8_t stepPin, uint8_t dirPin, uint8_t stopPin )
     //_stepper->setAcceleration(10000);
     //_stepper->setSpeedInHz(1000);
     
-    _stepper->setAcceleration(8000); 
-    _stepper->setSpeedInHz(800);
+    _stepper->setAcceleration(12000); 
+    _stepper->setSpeedInHz(10000);
   }
-   timeout_const=200;
+   timeout_const=220;
    directie=1; // -1 = normal, 1 = reversed
    gear_ratio=STEPPER_GEAR_RATIO; // default; overridden from NVS via load_gear_ratio() in setup()
 
@@ -172,24 +172,41 @@ steps/sec
   // → the previous position throws no ball and the next one throws two.
   // Waiting until the current position reaches the computed target avoids this.
   int32_t _target = _stepper->getCurrentPosition() + (int32_t)directie * (int32_t)_speed;
+  
+  // Log actual stepper state before move
+  Serial.printf("STEPPER: About to move: accel=%lu speed=%u pos=%ld target=%ld\n",
+                (unsigned long)_stepper->getAcceleration(), getSpeedInHz(),
+                (long)_stepper->getCurrentPosition(), (long)_target);
+  
   _stepper->moveTo(_target);
 
   // Safety timeout: 5s max — prevents infinite block if FAS gets stuck
-  unsigned long _move_deadline = millis() + 5000UL;
+  unsigned long _move_start = millis();
+  unsigned long _move_deadline = _move_start + 5000UL;
   while (enable && _stepper->getCurrentPosition() != _target && millis() < _move_deadline)
   {
     yield();
   }
+  unsigned long _move_duration = millis() - _move_start;
+  
   if (enable && _stepper->getCurrentPosition() != _target) {
     _stepper->forceStop();
-    Serial.printf("WARNING: move_stepper() timeout — stepper force-stopped (pos=%ld target=%ld)\n",
-                  (long)_stepper->getCurrentPosition(), (long)_target);
+    Serial.printf("WARNING: move_stepper() timeout — stepper force-stopped (pos=%ld target=%ld) duration=%lu ms\n",
+                  (long)_stepper->getCurrentPosition(), (long)_target, _move_duration);
+  } else if (enable) {
+    Serial.printf("STEPPER: Move completed in %lu ms (pos=%ld target=%ld speed=%u Hz)\n",
+                  _move_duration, (long)_stepper->getCurrentPosition(), (long)_target, getSpeedInHz());
   }
 
    if (prog==true)
    { 
-      uint16_t timeout = _FEEDER[index] *timeout_const;  // 160 ---> 280 msec
+      uint16_t timeout = _FEEDER[index] * timeout_const;
+      unsigned long _delay_start = millis();
+      Serial.printf("STEPPER: index=%d FEEDER[%d]=%d timeout_const=%u -> delay=%u ms\n",
+                    index, index, _FEEDER[index], timeout_const, timeout);
       tempo_empty(timeout);
+      unsigned long _delay_duration = millis() - _delay_start;
+      Serial.printf("STEPPER: Actual delay measured: %lu ms (planned: %u ms)\n", _delay_duration, timeout);
    }
   }
 
@@ -353,14 +370,14 @@ uint32_t StepperX::getSpeedInHz()
 void StepperX::setAcceleration(uint32_t accel)
 {
   if (accel < 400) accel = 400;
-  if (accel > 12000) accel = 12000;
+  if (accel > 14000) accel = 14000;
   if (_stepper) _stepper->setAcceleration((int32_t)accel);
 }
 
 void StepperX::setSpeedInHz(uint32_t speed_hz)
 {
   if (speed_hz < 200) speed_hz = 200;
-  if (speed_hz > 1600) speed_hz = 1600;
+  if (speed_hz > 12000) speed_hz = 12000;
   if (_stepper) _stepper->setSpeedInHz(speed_hz);
 }
 

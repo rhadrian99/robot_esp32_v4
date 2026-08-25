@@ -28,6 +28,14 @@ void LEDdisplay::clear(){
   }
 }
 
+void LEDdisplay::shutdown(){
+  for (int i = 0; i < NBR_MTX; i++)
+  {
+    lc.clearDisplay(i);    //clear the display
+    lc.shutdown(i, true);  //turn the display OFF
+  }
+}
+
 // Draw image to LED matrix immediately (non-blocking) - NO clear here!
 void LEDdisplay::display_now(uint64_t image) {
   // DON'T call clear() here - it would erase the display!

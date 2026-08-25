@@ -1168,21 +1168,21 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
     <div class="grid">
       <div>
         <div class="row-lbl">Acceleration</div>
-        <span class="row-hint">400 - 12000</span>
+        <span class="row-hint">400 - 14000</span>
       </div>
-      <input type="number" id="accel" min="400" max="12000" value="8000">
+      <input type="number" id="accel" min="400" max="14000" value="12000">
 
       <div>
         <div class="row-lbl">Speed</div>
-        <span class="row-hint">200 - 1600</span>
+        <span class="row-hint">200 - 12000</span>
       </div>
-      <input type="number" id="speed" min="200" max="1600" value="800">
+      <input type="number" id="speed" min="200" max="12000" value="10000">
 
       <div>
         <div class="row-lbl">Timeout_const</div>
         <span class="row-hint">50 - 400 ms</span>
       </div>
-      <input type="number" id="timeout" min="50" max="400" value="200">
+      <input type="number" id="timeout" min="50" max="400" value="220">
 
       <div>
         <div class="row-lbl">Gear ratio</div>
@@ -1518,6 +1518,7 @@ void WebControl::_handle_right()
 void WebControl::_handle_power()
 {
   infrared_web_stop_all();
+  display.shutdown();  // Turn off the LED display
   _server.send(200, "text/plain", "POWER OK");
 }
 
