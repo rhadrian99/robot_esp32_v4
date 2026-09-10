@@ -28,10 +28,12 @@
 #ifndef USE_CAPTIVE_PORTAL
   #define USE_CAPTIVE_PORTAL 1
 #endif
-// Watchdog "AP surd": daca driverul raporteaza clients>=1 dar nu mai vine nicio
-// activitate (radio RX mort dupa glitch EMI/brownout) atatea ms, fortam un
-// power-cycle complet al radioului (WIFI_OFF -> WIFI_AP, reruleaza calibrarea PHY).
-// Mareste-l daca reseteaza prea des un telefon conectat dar inactiv.
+#ifndef WIFI_AP_CHANNEL
+  #define WIFI_AP_CHANNEL 11
+#endif
+// Watchdog "AP surd": dupa ce pagina a inceput polling-ul, daca driverul
+// raporteaza clients>=1 dar nu mai vine activitate atatea ms, fortam un restart
+// MAC/PHY. Asocierea WiFi fara polling nu armeaza watchdog-ul.
 #ifndef WIFI_STUCK_TIMEOUT_MS
   #define WIFI_STUCK_TIMEOUT_MS 30000
 #endif
@@ -104,6 +106,8 @@ private:
   void _handle_steppersettings();
   void _handle_stepperstatus();
   void _handle_steppersave();
+  void _handle_steppersavedefaults();
+  void _handle_stepperloaddefaults();
 
   // FreeRTOS task
   static void _task(void *param);
@@ -157,6 +161,8 @@ private:
   static void _s_steppersettings() { _instance->_handle_steppersettings(); }
   static void _s_stepperstatus()   { _instance->_handle_stepperstatus(); }
   static void _s_steppersave()     { _instance->_handle_steppersave(); }
+  static void _s_steppersavedefaults() { _instance->_handle_steppersavedefaults(); }
+  static void _s_stepperloaddefaults() { _instance->_handle_stepperloaddefaults(); }
 };
 
 #endif

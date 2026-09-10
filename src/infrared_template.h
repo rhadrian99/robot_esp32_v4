@@ -688,19 +688,26 @@ public:
 
     if (execute == false) // stop the programming mode
     {
-      // stop motors FIRST — before any display/delay calls
-      // BrushTimer fires every 50ms and calls update_motors() → set_speed() with old pos() speed
-      // if we delay here (display), motors keep running for that duration
+      // Use same stop sequence as Power button
+      execute = false;
+      mode = 'N';
+
+      // Stop the feeder first so no ball is pushed after the launch motors stop.
       feeder.index = 0;
       feeder.stop();
+
+      motor_up.index = 0;
+      motor_down.index = 0;
       motor_up.stop();
       motor_down.stop();
       motor_up.set_speed(0);
       motor_down.set_speed(0);
 
-      mode = 'N';
-      display.displayImage_async(IMAGES[12], 1); // ok save
-      initial_position();                  // servo to neutral position
+      // Servo homing
+      pan.load_pos();
+      tilt.load_pos();
+
+      display.shutdown();
     }
     else // start the program  execute=true
     {
@@ -729,7 +736,7 @@ public:
 
     tempo_empty(500);
     initial_position(); // servo to neutral position
-    display.show_char(mode, 0.5);
+    display.shutdown();  // turn off the LED display
   }
 
   void virtual _Tdiez()
@@ -741,7 +748,7 @@ public:
 
     tempo_empty(30);
     initial_position();
-    display.show_char(mode, 0.5);
+    display.shutdown();  // turn off the LED display
   }
 
   void virtual _TLEFT()
@@ -805,7 +812,7 @@ public:
       program_preloaded = true;
     }
     
-    int time = 150;
+    int time = 600;
 
     if (mode == 'N')
     {
@@ -832,13 +839,13 @@ public:
         break;
 
       case 4:
-        pos(*get_point_by_number(1), 100);
+        pos(*get_point_by_number(1), time/2);
         if (!execute) break;
-        pos(*get_point_by_number(1), 200);
+        pos(*get_point_by_number(1), time);
         if (!execute) break;
-        pos(*get_point_by_number(3), 100);
+        pos(*get_point_by_number(3), time/2);
         if (!execute) break;
-        pos(*get_point_by_number(3), 200);
+        pos(*get_point_by_number(3), time);
         break;
 
       case 6:
@@ -856,7 +863,7 @@ public:
 
             target_point *p = get_point_by_number(randPoint);
             if (p)
-              pos(*p, time);
+              pos(*p, time/2);
             if (!execute)
               break;
             lastPoint = randPoint;
@@ -893,14 +900,27 @@ public:
       return;
     }
 
-    //tempo_empty(timeout_throw); //temporizare
+    // Asteapta cu toleranta pana cand servo au ajuns la pozitie
+    uint32_t start_wait = millis();
+    uint32_t servo_timeout = 5000;  // 5 secunde timeout
+    int tolerance = 2;  // Allow 2 units difference
+
+    while (execute && millis() - start_wait < servo_timeout) {
+      if (abs(pan.read_pos() - P._pan_pos) <= tolerance &&
+            abs(tilt.read_pos() - P._tilt_pos) <= tolerance) {
+            break;  // Ambele servo in range
+        }
+        delay(50);
+    }
 
     if (execute == false)
     {
       return;
     }
+    tempo_empty(250);
+    // Acum porneste feederul sigur dupa ce servo au ajuns
     feeder.move_stepper(false);
-    tempo_empty(timeout_throw); //temporizare
+    tempo_empty(timeout_throw);
   }
 
 private:

@@ -142,7 +142,7 @@ public:
         tempo_empty(500);
 
         initial_position(); // servo to neutral position
-        display.displayImage(IMAGES[12],0.5); // ok save
+        display.shutdown(); // turn off the LED display
       }
       else // start the program  execute=true
       {

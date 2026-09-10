@@ -72,6 +72,8 @@ void load_accel_speed();
 // (avoids 3-4 separate flash writes back-to-back, which briefly stalls the CPU
 // and can disrupt WiFi timing when triggered directly from an HTTP handler).
 void save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction, float gear);
+void save_defaults(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction, float gear);
+void load_defaults();
 
 private:
 

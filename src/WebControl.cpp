@@ -1148,9 +1148,9 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
     input:checked + .slider{background:#e94560}
     input:checked + .slider:before{transform:translateX(26px);background:#fff}
     /* confirm modal */
-    #modal{display:none;position:fixed;inset:0;background:#0008;
+    #modal, #modal-defaults-save, #modal-defaults-load{display:none;position:fixed;inset:0;background:#0008;
            z-index:999;align-items:center;justify-content:center}
-    #modal.show{display:flex}
+    #modal.show, #modal-defaults-save.show, #modal-defaults-load.show{display:flex}
     .modal-box{background:#16213e;border-radius:14px;padding:24px 20px;
                max-width:280px;width:90%;text-align:center}
     .modal-box p{margin-bottom:20px;font-size:14px;line-height:1.5}
@@ -1159,6 +1159,7 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
                        font-size:15px;font-weight:bold;cursor:pointer}
     .btn-ok{background:#e94560;color:#eee}
     .btn-cancel{background:#0f3460;color:#aaa}
+    .btn-container{width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px}
   </style>
 </head>
 <body>
@@ -1198,8 +1199,10 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
-  <div style="width:100%;max-width:340px">
+  <div class="btn-container">
     <button class="btn btn-save" onclick="saveStepper()">&#128190; Save</button>
+    <button class="btn btn-save" onclick="saveAsDefaults()" style="background:#1a5f3f">&#128505; Save as Defaults</button>
+    <button class="btn btn-save" onclick="loadDefaults()" style="background:#3f451a">&#8987; Load Defaults</button>
     <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
   </div>
 
@@ -1212,6 +1215,28 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
       <div class="modal-btns">
         <button class="btn-ok" onclick="doStepperSave()">OK</button>
         <button class="btn-cancel" onclick="closeStepperModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- confirm modal save as defaults -->
+  <div id="modal-defaults-save">
+    <div class="modal-box">
+      <p>Salvezi valorile curente ca valori default?</p>
+      <div class="modal-btns">
+        <button class="btn-ok" onclick="doSaveAsDefaults()">OK</button>
+        <button class="btn-cancel" onclick="closeDefaultsSaveModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- confirm modal load defaults -->
+  <div id="modal-defaults-load">
+    <div class="modal-box">
+      <p>Incarci valorile default salvate?</p>
+      <div class="modal-btns">
+        <button class="btn-ok" onclick="doLoadDefaults()">OK</button>
+        <button class="btn-cancel" onclick="closeDefaultsLoadModal()">Cancel</button>
       </div>
     </div>
   </div>
@@ -1256,6 +1281,49 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
         .finally(()=>{_savingStepper=false; if(btn) btn.disabled=false;});
     }
 
+    function saveAsDefaults(){
+      document.getElementById('modal-defaults-save').classList.add('show');
+    }
+    function closeDefaultsSaveModal(){
+      document.getElementById('modal-defaults-save').classList.remove('show');
+    }
+
+    var _savingDefaults = false;
+    function doSaveAsDefaults(){
+      document.getElementById('modal-defaults-save').classList.remove('show');
+      if (_savingDefaults) return;
+      _savingDefaults = true;
+      var accel=parseInt(document.getElementById('accel').value);
+      var speed=parseInt(document.getElementById('speed').value);
+      var timeout=parseInt(document.getElementById('timeout').value);
+      var gear=parseFloat(document.getElementById('gear').value);
+      var direction=document.getElementById('direction').checked ? -1 : 1;
+      fetch('/steppersavedefaults?accel='+accel+'&speed='+speed+'&timeout='+timeout+'&gear='+gear+'&direction='+direction)
+        .then(r=>r.text())
+        .then(t=>{document.getElementById('status').textContent=t;})
+        .catch(()=>document.getElementById('status').textContent='error salvare defaults')
+        .finally(()=>{_savingDefaults=false;});
+    }
+
+    function loadDefaults(){
+      document.getElementById('modal-defaults-load').classList.add('show');
+    }
+    function closeDefaultsLoadModal(){
+      document.getElementById('modal-defaults-load').classList.remove('show');
+    }
+
+    var _loadingDefaults = false;
+    function doLoadDefaults(){
+      document.getElementById('modal-defaults-load').classList.remove('show');
+      if (_loadingDefaults) return;
+      _loadingDefaults = true;
+      fetch('/stepperloaddefaults')
+        .then(r=>r.text())
+        .then(t=>{document.getElementById('status').textContent=t; loadStatus();})
+        .catch(()=>document.getElementById('status').textContent='error incarcare defaults')
+        .finally(()=>{_loadingDefaults=false;});
+    }
+
     loadStatus();
   </script>
 </body>
@@ -1297,6 +1365,11 @@ static volatile bool s_apRestartNeeded = false;
 // dupa un glitch EMI/brownout si nu mai vine niciun request. Vezi WIFI_STUCK_TIMEOUT_MS.
 static volatile uint32_t s_lastWifiActivityMs = 0;
 
+// Armat numai dupa ce pagina de control a inceput polling-ul HTTP. O simpla
+// asociere WiFi nu garanteaza trafic (browser inchis/in fundal), deci nu trebuie
+// sa provoace restarturi repetate la fiecare WIFI_STUCK_TIMEOUT_MS.
+static volatile bool s_deafWatchdogArmed = false;
+
 // True cat timp health-check-ul face un restart/power-cycle intentionat al AP-ului.
 // Evita bucla de restart: WiFi.mode(WIFI_OFF)/softAPdisconnect din secventa noastra
 // declanseaza evenimentul AP_STOP, care altfel ar re-seta s_apRestartNeeded=true.
@@ -1316,6 +1389,7 @@ static void _wifiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info)
     case ARDUINO_EVENT_WIFI_AP_STADISCONNECTED: {
       const uint8_t *m = info.wifi_ap_stadisconnected.mac;
       s_lastWifiActivityMs = millis();
+      s_deafWatchdogArmed = false;
       Serial.printf("[WiFi][%lu] Client DECONECTAT %02X:%02X:%02X:%02X:%02X:%02X  aid=%u  heap=%u\n",
                     millis(), m[0], m[1], m[2], m[3], m[4], m[5],
                     info.wifi_ap_stadisconnected.aid, ESP.getFreeHeap());
@@ -1363,7 +1437,7 @@ void WebControl::_connect_wifi()
   delay(100);
   // Retry de 3 ori, verificand ca IP-ul e valid (secventa dovedita din proiectul feeder).
   for (int attempt = 1; attempt <= 3; attempt++) {
-    if (WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS, 1, 0, 4)) {
+    if (WiFi.softAP(uniqueSSID.c_str(), WIFI_PASS, WIFI_AP_CHANNEL, 0, 2)) {
       delay(250);
       if (WiFi.softAPIP()[0] != 0) break;
     }
@@ -1433,6 +1507,8 @@ void WebControl::_register_routes()
   _server.on("/steppersettings", HTTP_GET, _s_steppersettings);
   _server.on("/stepperstatus",   HTTP_GET, _s_stepperstatus);
   _server.on("/steppersave",     HTTP_GET, _s_steppersave);
+  _server.on("/steppersavedefaults", HTTP_GET, _s_steppersavedefaults);
+  _server.on("/stepperloaddefaults", HTTP_GET, _s_stepperloaddefaults);
   _server.on("/firmware", HTTP_GET, _s_firmware);
   _server.on("/update", HTTP_POST, _s_update_done, _s_update_upload);
   _server.on("/favicon.ico", HTTP_GET, [this](){ _server.send(204, "text/plain", ""); });
@@ -1578,6 +1654,7 @@ void WebControl::_handle_steppersettings()
 void WebControl::_handle_stepperstatus()
 {
   s_lastWifiActivityMs = millis();  // poll pagina stepper -> feed watchdog "AP surd"
+  s_deafWatchdogArmed = true;
   char buffer[160] = {0};
   snprintf(buffer, sizeof(buffer), "{\"accel\":%u,\"speed\":%u,\"timeout\":%u,\"direction\":%d,\"gear\":%.2f}",
           feeder.getAcceleration(), feeder.getSpeedInHz(), feeder.timeout_const, feeder.directie, feeder.gear_ratio);
@@ -1633,6 +1710,34 @@ void WebControl::_handle_steppersave()
   }
 
   _server.send(200, "text/plain", "Stepper settings saved");
+}
+
+void WebControl::_handle_steppersavedefaults()
+{
+  uint32_t accel   = _server.hasArg("accel")   ? _server.arg("accel").toInt()   : feeder.getAcceleration();
+  uint32_t speed   = _server.hasArg("speed")   ? _server.arg("speed").toInt()   : feeder.getSpeedInHz();
+  uint16_t timeout = _server.hasArg("timeout") ? _server.arg("timeout").toInt() : feeder.timeout_const;
+  int8_t direction = _server.hasArg("direction") ? (int8_t)_server.arg("direction").toInt() : feeder.directie;
+  float gear       = _server.hasArg("gear")    ? _server.arg("gear").toFloat()  : feeder.gear_ratio;
+
+  if (direction != 1 && direction != -1) {
+    _server.send(400, "text/plain", "Invalid direction");
+    return;
+  }
+
+  if (gear < 1.0f || gear > 5.0f) {
+    _server.send(400, "text/plain", "Invalid gear ratio");
+    return;
+  }
+
+  feeder.save_defaults(accel, speed, timeout, direction, gear);
+  _server.send(200, "text/plain", "Valori salvate ca default");
+}
+
+void WebControl::_handle_stepperloaddefaults()
+{
+  feeder.load_defaults();
+  _server.send(200, "text/plain", "Valori default incarcate");
 }
 
 void WebControl::_handle_firmware()
@@ -1999,6 +2104,7 @@ void WebControl::_handle_runstop()
   if (infrared_get_execute_state())
   {
     infrared_web_stop_all();
+    display.shutdown();  // turn off the LED display
     _server.send(200, "text/plain", "stopped");
     return;
   }
@@ -2389,6 +2495,7 @@ void WebControl::_handle_home()
 void WebControl::_handle_status()
 {
   s_lastWifiActivityMs = millis();  // poll la 500ms cat timp aplicatia e deschisa -> feed watchdog
+  s_deafWatchdogArmed = true;
   String spin = motor_up.spintype;
   // translate internal spintype to user-friendly label
   if (motor_up.spin == Brush::TOPSPIN)     spin = "TOPSPIN";
@@ -2478,10 +2585,11 @@ void WebControl::_task(void *param)
         uint32_t clients  = WiFi.softAPgetStationNum();
         // "AP surd": driverul pare OK (IP+mode valide, clients>=1) dar nu mai vine
         // nicio activitate de mult -> radioul RX e mort dupa glitch EMI/brownout.
-        bool ap_deaf = (clients >= 1) && (now - s_lastWifiActivityMs > WIFI_STUCK_TIMEOUT_MS);
-        Serial.printf("[WIFI] health: mode=%d ip=%s clients=%u restartFlag=%d idle=%lums heap=%u\n",
+        bool ap_deaf = s_deafWatchdogArmed && (clients >= 1) &&
+                 (now - s_lastWifiActivityMs > WIFI_STUCK_TIMEOUT_MS);
+        Serial.printf("[WIFI] health: mode=%d ip=%s clients=%u restartFlag=%d armed=%d idle=%lums heap=%u\n",
                       (int)WiFi.getMode(), WiFi.softAPIP().toString().c_str(),
-                      clients, (int)s_apRestartNeeded,
+                clients, (int)s_apRestartNeeded, (int)s_deafWatchdogArmed,
                       (unsigned long)(now - s_lastWifiActivityMs), ESP.getFreeHeap());
         if (ip_invalid || mode_invalid || s_apRestartNeeded || ap_deaf) {
           if (ap_deaf)
@@ -2500,10 +2608,11 @@ void WebControl::_task(void *param)
           esp_wifi_start();
           delay(200);
           WiFi.softAPConfig(apIP, apIP, apSubnet);
-          WiFi.softAP(self->uniqueSSID.c_str(), WIFI_PASS, 1, 0, 4);
+          WiFi.softAP(self->uniqueSSID.c_str(), WIFI_PASS, WIFI_AP_CHANNEL, 0, 4);
           WiFi.setSleep(false);
           WiFi.setTxPower(WIFI_POWER_19_5dBm);
           s_lastWifiActivityMs = millis();  // reseteaza watchdog-ul dupa repornire
+          s_deafWatchdogArmed = false;  // urmatorul poll HTTP confirma ca pagina si-a revenit
 #if USE_CAPTIVE_PORTAL
           self->_dnsServer.start(53, "*", apIP);
 #endif

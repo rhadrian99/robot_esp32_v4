@@ -465,3 +465,70 @@ void StepperX::save_all_settings(uint32_t accel, uint32_t speed_hz, uint16_t tim
   }
 }
 
+void StepperX::save_defaults(uint32_t accel, uint32_t speed_hz, uint16_t timeout, int8_t direction, float gear)
+{
+  // Validate parameters
+  if (accel < 400 || accel > 14000) {
+    Serial.printf("WARNING: Invalid accel %u for defaults. Using 12000.\n", accel);
+    accel = 12000;
+  }
+  if (speed_hz < 200 || speed_hz > 12000) {
+    Serial.printf("WARNING: Invalid speed %u for defaults. Using 10000.\n", speed_hz);
+    speed_hz = 10000;
+  }
+  if (timeout < 50 || timeout > 400) {
+    Serial.printf("WARNING: Invalid timeout %u for defaults. Using 220.\n", timeout);
+    timeout = 220;
+  }
+  if (direction != 1 && direction != -1) {
+    Serial.printf("WARNING: Invalid direction %d for defaults. Using -1.\n", direction);
+    direction = -1;
+  }
+  if (gear < 1.0f || gear > 5.0f) {
+    Serial.printf("WARNING: Invalid gear ratio %.2f for defaults. Using %.2f.\n", gear, (float)STEPPER_GEAR_RATIO);
+    gear = STEPPER_GEAR_RATIO;
+  }
+
+  if (!stepper_mem.begin("stepper_defaults", false)) {
+    Serial.printf("ERROR: Failed to open stepper defaults NVS namespace\n");
+    return;
+  }
+
+  bool ok = stepper_mem.putUInt("accel", accel) &&
+            stepper_mem.putUInt("speed", speed_hz) &&
+            stepper_mem.putInt("timeout", timeout) &&
+            stepper_mem.putInt("directie", direction) &&
+            stepper_mem.putFloat("gear", gear);
+
+  uint32_t t0 = micros();
+  stepper_mem.end();
+  uint32_t commit_us = micros() - t0;
+
+  if (ok) {
+    Serial.printf("INFO: Stepper defaults saved: accel=%u speed=%u timeout=%u direction=%d gear=%.2f (NVS commit=%u us)\n",
+                  accel, speed_hz, timeout, direction, gear, commit_us);
+  } else {
+    Serial.printf("ERROR: Failed to save one or more stepper defaults\n");
+  }
+}
+
+void StepperX::load_defaults()
+{
+  if (!stepper_mem.begin("stepper_defaults", true)) {
+    Serial.printf("ERROR: Failed to open stepper defaults NVS namespace\n");
+    return;
+  }
+
+  uint32_t accel   = stepper_mem.getUInt("accel", 12000);
+  uint32_t speed   = stepper_mem.getUInt("speed", 10000);
+  uint16_t timeout = stepper_mem.getInt("timeout", 220);
+  int8_t direction = stepper_mem.getInt("directie", -1);
+  float gear       = stepper_mem.getFloat("gear", STEPPER_GEAR_RATIO);
+
+  stepper_mem.end();
+
+  // Use save_all_settings to apply defaults (handles validation)
+  save_all_settings(accel, speed, timeout, direction, gear);
+  Serial.printf("INFO: Stepper defaults loaded and applied\n");
+}
+
