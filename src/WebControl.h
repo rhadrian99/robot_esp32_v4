@@ -77,6 +77,7 @@ private:
   void _handle_home();
   void _handle_status();
   void _handle_step();
+  void _handle_settingsmenu();
   void _handle_settings();
   void _handle_setlimits();
   void _handle_motorsettings();
@@ -132,6 +133,7 @@ private:
   static void _s_home()     { _instance->_handle_home(); }
   static void _s_status()   { _instance->_handle_status(); }
   static void _s_step()     { _instance->_handle_step(); }
+  static void _s_settingsmenu()  { _instance->_handle_settingsmenu(); }
   static void _s_settings()      { _instance->_handle_settings(); }
   static void _s_setlimits()     { _instance->_handle_setlimits(); }
   static void _s_motorsettings() { _instance->_handle_motorsettings(); }

@@ -189,24 +189,10 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
     Firmware v<span id="fw-version">-</span>
   </div>
 
-  <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px">
-    <div style="display:flex;gap:8px">
-      <button id="btn-servo-settings" onclick="stopPolling();window.location='/settings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
-                       font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-        &#9881; Servo Settings
-      </button>
-      <button id="btn-motor-settings" onclick="stopPolling();window.location='/motorsettings'" style="flex:1;width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
-                       font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-        &#9881; Motor Settings
-      </button>
-    </div>
-    <button id="btn-stepper-settings" onclick="stopPolling();window.location='/steppersettings'" style="width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
-                     font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-      &#9881; Stepper Settings
-    </button>
-    <button id="btn-firmware-update" onclick="stopPolling();window.location='/firmware'" style="width:100%;border:none;border-radius:10px;background:#1a3a1a;color:#66dd66;
-                     font-size:13px;padding:12px;cursor:pointer;font-weight:bold">
-      &#11014; Firmware Update
+  <div style="width:100%;max-width:320px">
+    <button id="btn-settings" onclick="stopPolling();window.location='/settingsmenu'" style="width:100%;border:none;border-radius:10px;background:#0f3460;color:#aaa;
+                     font-size:14px;padding:12px;cursor:pointer;font-weight:bold">
+      &#9881; Settings
     </button>
   </div>
 
@@ -499,7 +485,7 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
         .catch(()=>{document.getElementById('status').textContent='error';toast('Eroare salvare HOME', true);});
     }
     function setSettingsButtonsEnabled(enabled){
-      var ids=['btn-servo-settings','btn-motor-settings','btn-stepper-settings','btn-firmware-update'];
+      var ids=['btn-settings'];
       ids.forEach(function(id){
         var btn=document.getElementById(id);
         if(!btn) return;
@@ -605,6 +591,39 @@ static const char HTML_PAGE[] PROGMEM = R"rawhtml(
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // â”€â”€ Firmware Update page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+static const char SETTINGS_MENU_PAGE[] PROGMEM = R"rawhtml(
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
+  <title>Settings</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;background:#1a1a2e;color:#eee;touch-action:manipulation;
+         display:flex;flex-direction:column;align-items:center;padding:20px;gap:16px;min-height:100vh}
+    h2{letter-spacing:2px;font-size:18px;margin:12px 0 4px}
+    .menu{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+    .menu a{display:block;width:100%;border-radius:10px;background:#0f3460;color:#eee;
+            font-size:16px;padding:15px;text-align:center;text-decoration:none;font-weight:bold}
+    .menu a:last-child{background:#1a3a1a;color:#66dd66}
+    .home{display:block;width:100%;max-width:340px;text-align:center;color:#aaa;text-decoration:none;
+          padding:14px;border-radius:10px;background:#0f3460;font-size:15px;font-weight:bold;margin-top:6px}
+  </style>
+</head>
+<body>
+  <h2>&#9881; Settings</h2>
+  <div class="menu">
+    <a href="/settings">&#9881; Servo Settings</a>
+    <a href="/motorsettings">&#9881; Motor Settings</a>
+    <a href="/steppersettings">&#9881; Stepper Settings</a>
+    <a href="/firmware">&#11014; Firmware Update</a>
+  </div>
+  <a href="/" class="home">&#8962; Pagina principala</a>
+</body>
+</html>
+)rawhtml";
+
 static const char FIRMWARE_UPDATE_PAGE[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
 <html>
@@ -624,7 +643,8 @@ button{width:100%;padding:16px;font-size:16px;font-weight:700;border:none;border
 #otaStatus.success{color:#66dd66}
 #otaStatus.info{color:#888}
 progress{width:100%;height:8px;border-radius:4px;accent-color:#e94560;display:none;margin-top:6px}
-.back{display:block;text-align:center;color:#888;text-decoration:none;margin-top:4px;padding:14px;border:1px solid #333;border-radius:10px;background:#1a1a2e;font-size:16px;font-weight:600;touch-action:manipulation}
+.nav{display:flex;gap:8px;margin-top:4px}
+.back{flex:1;display:block;text-align:center;color:#888;text-decoration:none;padding:14px 8px;border:1px solid #333;border-radius:10px;background:#1a1a2e;font-size:14px;font-weight:600;touch-action:manipulation}
 </style>
 </head>
 <body>
@@ -638,7 +658,10 @@ progress{width:100%;height:8px;border-radius:4px;accent-color:#e94560;display:no
   <progress id="fwProg" value="0" max="100"></progress>
   <div id="otaStatus"></div>
 </div>
-<a href="/" class="back">&#8592; Inapoi</a>
+<div class="nav">
+  <a href="/settingsmenu" class="back">&#8592; Inapoi</a>
+  <a href="/" class="back">&#8962; Pagina principala</a>
+</div>
 <script>
 function readFwFile(){
   var f=document.getElementById('fwFile').files[0];
@@ -698,7 +721,7 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1">
-  <title>Settings</title>
+  <title>Servo Settings</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:sans-serif;background:#1a1a2e;color:#eee;touch-action:manipulation;
@@ -716,7 +739,9 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
     .btn{width:100%;border:none;border-radius:10px;cursor:pointer;
          font-size:16px;color:#eee;padding:13px;font-weight:bold}
     .btn-save{background:#e94560}
-    .btn-back{background:#0f3460;color:#aaa;margin-top:8px}
+    .btn-back{background:#0f3460;color:#aaa}
+    .nav{width:100%;max-width:340px;display:flex;gap:8px;margin-top:8px}
+    .nav .btn{flex:1;font-size:14px;padding:13px 8px}
     #status{font-size:12px;color:#555}
     /* confirm modal */
     #modal{display:none;position:fixed;inset:0;background:#0008;
@@ -743,7 +768,7 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
   </style>
 </head>
 <body>
-  <h2>&#9881; Settings</h2>
+  <h2>&#9881; Servo Settings</h2>
 
   <div class="card">
     <div class="dgrid">
@@ -803,8 +828,9 @@ static const char SETTINGS_PAGE[] PROGMEM = R"rawhtml(
     </div>
   </div>
 
-  <div style="width:100%;max-width:340px">
-    <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
+  <div class="nav">
+    <button class="btn btn-back" onclick="window.location='/settingsmenu'">&#8592; Inapoi</button>
+    <button class="btn btn-back" onclick="window.location='/'">&#8962; Pagina principala</button>
   </div>
 
   <div id="status">Se incarca...</div>
@@ -980,7 +1006,8 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
     td{padding:8px 4px;text-align:center;color:#e94560;font-weight:bold}
     td.idx{color:#555;font-size:10px}
     .const-row{display:flex;justify-content:space-between;font-size:12px;color:#888;padding:6px 0}
-    .back{display:block;text-align:center;color:#888;text-decoration:none;padding:14px;border:1px solid #333;border-radius:10px;background:#1a1a2e;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;border:none}
+    .nav{display:flex;gap:8px}
+    .back{flex:1;display:block;text-align:center;color:#888;text-decoration:none;padding:14px 8px;border-radius:10px;background:#1a1a2e;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;border:none}
   </style>
 </head>
 <body>
@@ -1033,7 +1060,10 @@ static const char MOTOR_PAGE[] PROGMEM = R"rawhtml(
     </table>
   </div>
 </div>
-<button class="back" onclick="window.location='/'">&#9668; Inapoi</button>
+<div class="nav">
+  <button class="back" onclick="window.location='/settingsmenu'">&#9668; Inapoi</button>
+  <button class="back" onclick="window.location='/'">&#8962; Pagina principala</button>
+</div>
 <div id="status" style="text-align:center;font-size:12px;color:#666;margin-top:16px">ready</div>
 
 <script>
@@ -1137,7 +1167,7 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
     .btn{width:100%;border:none;border-radius:10px;cursor:pointer;
          font-size:16px;color:#eee;padding:13px;font-weight:bold}
     .btn-save{background:#e94560}
-    .btn-back{background:#0f3460;color:#aaa;margin-top:8px}
+    .btn-back{background:#0f3460;color:#aaa}
     #status{font-size:12px;color:#555}
     .switch{position:relative;display:inline-block;width:56px;height:30px}
     .switch input{display:none}
@@ -1160,6 +1190,8 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
     .btn-ok{background:#e94560;color:#eee}
     .btn-cancel{background:#0f3460;color:#aaa}
     .btn-container{width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px}
+    .nav{display:flex;gap:8px;margin-top:8px}
+    .nav .btn{flex:1;font-size:14px;padding:13px 8px}
   </style>
 </head>
 <body>
@@ -1203,7 +1235,10 @@ static const char STEPPER_PAGE[] PROGMEM = R"rawhtml(
     <button class="btn btn-save" onclick="saveStepper()">&#128190; Save</button>
     <button class="btn btn-save" onclick="saveAsDefaults()" style="background:#1a5f3f">&#128505; Save as Defaults</button>
     <button class="btn btn-save" onclick="loadDefaults()" style="background:#3f451a">&#8987; Load Defaults</button>
-    <button class="btn btn-back" onclick="window.location='/'">&#8592; Inapoi</button>
+    <div class="nav">
+      <button class="btn btn-back" onclick="window.location='/settingsmenu'">&#8592; Inapoi</button>
+      <button class="btn btn-back" onclick="window.location='/'">&#8962; Pagina principala</button>
+    </div>
   </div>
 
   <div id="status">Se incarca...</div>
@@ -1482,6 +1517,7 @@ void WebControl::_register_routes()
   _server.on("/home",       HTTP_GET, _s_home);
   _server.on("/status",     HTTP_GET, _s_status);
   _server.on("/step",       HTTP_GET, _s_step);
+  _server.on("/settingsmenu",  HTTP_GET, _s_settingsmenu);
   _server.on("/settings",      HTTP_GET, _s_settings);
   _server.on("/setlimits",     HTTP_GET, _s_setlimits);
   _server.on("/motorsettings", HTTP_GET, _s_motorsettings);
@@ -1536,6 +1572,7 @@ void WebControl::_register_routes()
 void WebControl::_handle_root()
 {
   s_lastWifiActivityMs = millis();  // marcheaza activitate reala pt. watchdog-ul "AP surd"
+  s_deafWatchdogArmed = false;      // /status il rearmeaza dupa incarcarea aplicatiei
   Serial.printf("[HTTP] GET / begin, page=%u bytes, heap=%u\n",
                 (unsigned)(sizeof(HTML_PAGE) - 1), ESP.getFreeHeap());
 
@@ -1617,8 +1654,18 @@ void WebControl::_handle_step()
 
 void WebControl::_handle_settings()
 {
+  s_lastWifiActivityMs = millis();
+  s_deafWatchdogArmed = false;  // /status il rearmeaza cand pagina Servo porneste polling-ul
   _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", SETTINGS_PAGE);
+}
+
+void WebControl::_handle_settingsmenu()
+{
+  s_lastWifiActivityMs = millis();
+  s_deafWatchdogArmed = false;  // meniul Settings nu face polling
+  _server.sendHeader("Cache-Control", "max-age=600");
+  _server.send_P(200, "text/html", SETTINGS_MENU_PAGE);
 }
 
 void WebControl::_handle_panmin()
@@ -1647,6 +1694,8 @@ void WebControl::_handle_tiltmax()
 
 void WebControl::_handle_steppersettings()
 {
+  s_lastWifiActivityMs = millis();
+  s_deafWatchdogArmed = false;  // /stepperstatus il rearmeaza dupa incarcarea paginii
   _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", STEPPER_PAGE);
 }
@@ -1742,6 +1791,8 @@ void WebControl::_handle_stepperloaddefaults()
 
 void WebControl::_handle_firmware()
 {
+  s_lastWifiActivityMs = millis();
+  s_deafWatchdogArmed = false;  // pagina Firmware nu face polling
   _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", FIRMWARE_UPDATE_PAGE);
 }
@@ -1820,12 +1871,16 @@ void WebControl::_handle_update_done()
 
 void WebControl::_handle_motorsettings()
 {
+  s_lastWifiActivityMs = millis();
+  s_deafWatchdogArmed = false;  // /mstatus il rearmeaza dupa incarcarea paginii
   _server.sendHeader("Cache-Control", "max-age=600");
   _server.send_P(200, "text/html", MOTOR_PAGE);
 }
 
 void WebControl::_handle_mstatus()
 {
+  s_lastWifiActivityMs = millis();  // poll pagina Motor -> feed watchdog "AP surd"
+  s_deafWatchdogArmed = true;
   String spin;
   Brush* mainMotor = NULL;
   Brush* supportMotor = NULL;
