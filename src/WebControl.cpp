@@ -1734,11 +1734,15 @@ void WebControl::_handle_steppersave()
     return;
   }
 
-  // Apply speed/accel immediately (cheap, non-blocking), but do the flash write
+  // Apply all settings immediately (cheap, non-blocking), but do the flash write
   // on a separate task off Core 0 — NVS writes briefly stall the CPU and were
   // contributing to AP disconnects when triggered directly from the HTTP handler.
+  // Without this, /stepperstatus (polled right after save completes) could race
+  // the background task and read stale direction/gear, looking like they weren't saved.
   feeder.setAcceleration(accel);
   feeder.setSpeedInHz(speed);
+  feeder.directie = direction;
+  feeder.gear_ratio = gear;
 
   _bgActionBusy = true;
   struct SaveArgs { uint16_t timeout; int8_t direction; float gear; };

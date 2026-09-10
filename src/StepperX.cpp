@@ -489,7 +489,7 @@ void StepperX::save_defaults(uint32_t accel, uint32_t speed_hz, uint16_t timeout
     gear = STEPPER_GEAR_RATIO;
   }
 
-  if (!stepper_mem.begin("stepper_defaults", false)) {
+  if (!stepper_mem.begin("step_defaults", false)) {
     Serial.printf("ERROR: Failed to open stepper defaults NVS namespace\n");
     return;
   }
@@ -514,7 +514,7 @@ void StepperX::save_defaults(uint32_t accel, uint32_t speed_hz, uint16_t timeout
 
 void StepperX::load_defaults()
 {
-  if (!stepper_mem.begin("stepper_defaults", true)) {
+  if (!stepper_mem.begin("step_defaults", true)) {
     Serial.printf("ERROR: Failed to open stepper defaults NVS namespace\n");
     return;
   }
