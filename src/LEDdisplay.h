@@ -73,6 +73,8 @@ void show_char(char ch, float seconds);
 void show_char_no_delay(char ch);
 
 private:
+  void ensureAwake();
+
   // Async display state
   struct {
     uint64_t image;

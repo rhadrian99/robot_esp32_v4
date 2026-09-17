@@ -9,6 +9,13 @@ LEDdisplay::LEDdisplay(int dPin, int clPin, int csPin, int devices)
    lc = LedControl(dPin, clPin, csPin, devices);   
 }
 
+void LEDdisplay::ensureAwake() {
+  for (int i = 0; i < NBR_MTX; i++)
+  {
+    lc.shutdown(i, false);
+  }
+}
+
 void LEDdisplay::timer(unsigned long reftime) {
   unsigned long ref = millis();
   while ((millis() - ref) < reftime)
@@ -20,9 +27,9 @@ void LEDdisplay::timer(unsigned long reftime) {
 }
 
 void LEDdisplay::clear(){
+  ensureAwake();
   for (int i = 0; i < NBR_MTX; i++)
   {
-    lc.shutdown(i, false); //keep the screen on
     lc.setIntensity(i, 5); // set brightness to medium values
     lc.clearDisplay(i);    //clear the display after each letter
   }
@@ -38,6 +45,7 @@ void LEDdisplay::shutdown(){
 
 // Draw image to LED matrix immediately (non-blocking) - NO clear here!
 void LEDdisplay::display_now(uint64_t image) {
+  ensureAwake();
   // DON'T call clear() here - it would erase the display!
   // Just draw directly on top of whatever was there before.
   // Old display content (if any) will be overwritten.
@@ -138,6 +146,7 @@ void LEDdisplay::barX(volatile int16_t val, int16_t x1, int16_t x2) {
 
 void LEDdisplay::status( int16_t _S1, int16_t _S2, int16_t _F1)
 {
+  ensureAwake();
   
   barX(_S1 - 1, 0, 1);
   barX(_S2 - 1, 6, 7);

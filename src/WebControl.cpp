@@ -32,6 +32,17 @@ extern LEDdisplay display;
 // concurrently, which previously caused crashes/AP lockups.
 static volatile bool _bgActionBusy = false;
 
+static void _showHomeMarkerThenShutdown()
+{
+  display.show_char_no_delay('L');
+  xTaskCreatePinnedToCore([](void *param) {
+    (void)param;
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    display.shutdown();
+    vTaskDelete(nullptr);
+  }, "LedOff", 2048, nullptr, 1, nullptr, 1);
+}
+
 WebControl *WebControl::_instance = nullptr;
 
 // â”€â”€ HTML page served from flash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -604,22 +615,32 @@ static const char SETTINGS_MENU_PAGE[] PROGMEM = R"rawhtml(
          display:flex;flex-direction:column;align-items:center;padding:20px;gap:16px;min-height:100vh}
     h2{letter-spacing:2px;font-size:18px;margin:12px 0 4px}
     .menu{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
-    .menu a{display:block;width:100%;border-radius:10px;background:#0f3460;color:#eee;
-            font-size:16px;padding:15px;text-align:center;text-decoration:none;font-weight:bold}
-    .menu a:last-child{background:#1a3a1a;color:#66dd66}
-    .home{display:block;width:100%;max-width:340px;text-align:center;color:#aaa;text-decoration:none;
-          padding:14px;border-radius:10px;background:#0f3460;font-size:15px;font-weight:bold;margin-top:6px}
+    .menu-btn,.home{display:block;width:100%;border:none;border-radius:10px;background:#0f3460;color:#eee;
+          font-size:16px;padding:15px;text-align:center;text-decoration:none;font-weight:bold;cursor:pointer;
+          touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+    .menu-btn:last-child{background:#1a3a1a;color:#66dd66}
+    .home{max-width:340px;color:#aaa;font-size:15px;margin-top:6px}
+    .menu-btn:disabled,.home:disabled{opacity:.55;cursor:not-allowed}
   </style>
 </head>
 <body>
   <h2>&#9881; Settings</h2>
   <div class="menu">
-    <a href="/settings">&#9881; Servo Settings</a>
-    <a href="/motorsettings">&#9881; Motor Settings</a>
-    <a href="/steppersettings">&#9881; Stepper Settings</a>
-    <a href="/firmware">&#11014; Firmware Update</a>
+    <button class="menu-btn" onclick="go('/settings')">&#9881; Servo Settings</button>
+    <button class="menu-btn" onclick="go('/motorsettings')">&#9881; Motor Settings</button>
+    <button class="menu-btn" onclick="go('/steppersettings')">&#9881; Stepper Settings</button>
+    <button class="menu-btn" onclick="go('/firmware')">&#11014; Firmware Update</button>
   </div>
-  <a href="/" class="home">&#8962; Pagina principala</a>
+  <button class="home" onclick="go('/')">&#8962; Pagina principala</button>
+  <script>
+    var _navBusy=false;
+    function go(url){
+      if(_navBusy) return;
+      _navBusy=true;
+      document.querySelectorAll('button').forEach(function(btn){btn.disabled=true;});
+      window.location.href=url;
+    }
+  </script>
 </body>
 </html>
 )rawhtml";
@@ -1631,7 +1652,7 @@ void WebControl::_handle_right()
 void WebControl::_handle_power()
 {
   infrared_web_stop_all();
-  display.shutdown();  // Turn off the LED display
+  _showHomeMarkerThenShutdown();
   _server.send(200, "text/plain", "POWER OK");
 }
 
